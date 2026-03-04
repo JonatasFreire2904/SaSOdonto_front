@@ -1,14 +1,16 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface User {
   email: string;
+  userName: string;
   token: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (user: User) => void;
   logout: () => void;
 }
 
@@ -16,18 +18,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Ao iniciar, verifica se já tem token salvo
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+    if (token && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  const login = (userData: User) => {
+    localStorage.setItem("token", userData.token);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+  };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        setUser,
         isAuthenticated: !!user,
+        isLoading,
+        login,
         logout,
       }}
     >

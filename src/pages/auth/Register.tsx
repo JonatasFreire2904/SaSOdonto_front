@@ -3,15 +3,16 @@ import { Link } from "react-router-dom";
 import AuthLayout from "@/components/layout/AuthLayout";
 import InputField from "@/components/ui/InputField";
 import Button from "@/components/ui/Button";
-import { useLogin } from "@/hooks/useLogin";
+import { useRegister } from "@/hooks/useRegister";
 
-const Login = () => {
-  const { login, isLoading, error } = useLogin();
+const Register = () => {
+  const { register, isLoading, isSuccess, error } = useRegister();
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    login({
+    register({
+      userName: String(form.get("userName")),
       email: String(form.get("email")),
       password: String(form.get("password")),
     });
@@ -20,10 +21,10 @@ const Login = () => {
   return (
     <AuthLayout>
       <h1 className="text-3xl font-extrabold tracking-tight mb-2">
-        Bem-vindo de volta
+        Crie sua conta
       </h1>
       <p className="text-slate-500 dark:text-slate-400 mb-8">
-        Insira suas credenciais para acessar o painel clínico.
+        Registre sua clínica para começar a usar o DentalCloud.
       </p>
 
       <div className="bg-white dark:bg-slate-800/50 p-8 rounded-xl shadow-xl shadow-primary/5 border border-slate-200 dark:border-slate-700">
@@ -34,6 +35,23 @@ const Login = () => {
               {error}
             </div>
           )}
+
+          {isSuccess && (
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">check_circle</span>
+              Conta criada com sucesso! Redirecionando para login...
+            </div>
+          )}
+
+          <InputField
+            id="userName"
+            name="userName"
+            type="text"
+            label="Nome completo"
+            icon="person"
+            placeholder="Dr. João Silva"
+            required
+          />
 
           <InputField
             id="email"
@@ -51,57 +69,27 @@ const Login = () => {
             type="password"
             label="Senha"
             icon="lock"
-            placeholder="••••••••"
+            placeholder="Mínimo 3 caracteres"
             required
-            rightAction={
-              <a
-                className="text-xs font-bold text-primary hover:underline"
-                href="#"
-              >
-                Esqueci minha senha
-              </a>
-            }
+            minLength={3}
           />
 
-          <div className="flex items-center">
-            <input
-              className="h-4 w-4 text-primary border-slate-300 rounded focus:ring-primary/30 cursor-pointer"
-              id="remember"
-              name="remember"
-              type="checkbox"
-            />
-            <label
-              className="ml-2 block text-sm text-slate-600 dark:text-slate-400 cursor-pointer select-none"
-              htmlFor="remember"
-            >
-              Lembrar de mim
-            </label>
-          </div>
-
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Entrando..." : "Entrar no Portal"}
+            {isLoading ? "Cadastrando..." : "Criar Conta"}
           </Button>
         </form>
 
         <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex flex-col items-center gap-4">
           <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
-            Novo no DentalCloud?{" "}
-            <Link className="text-primary font-bold hover:underline" to="/register">
-              Registre sua clínica
+            Já tem uma conta?{" "}
+            <Link className="text-primary font-bold hover:underline" to="/login">
+              Faça login
             </Link>
           </p>
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 rounded-full">
-            <span className="material-symbols-outlined text-slate-400 text-lg">
-              shield_with_heart
-            </span>
-            <span className="text-xs font-medium text-slate-500">
-              Conformidade e Segurança de Dados
-            </span>
-          </div>
         </div>
       </div>
     </AuthLayout>
   );
 };
 
-export default Login;
+export default Register;
