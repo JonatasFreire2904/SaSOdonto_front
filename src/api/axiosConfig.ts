@@ -16,11 +16,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor: redireciona para login se receber 401
+// Interceptor: redireciona para login se receber 401 (exceto rotas de auth)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || "";
+    const isAuthRoute = url.includes("/auth/");
+
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
