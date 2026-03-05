@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
+import ClinicSelection from "@/pages/clinic/ClinicSelection";
 import Dashboard from "@/pages/dashboard/Dashboard";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
@@ -15,6 +16,9 @@ const AppRoutes = () => {
 
         {/* Rotas protegidas */}
         <Route element={<ProtectedRoute />}>
+          {/* Seleção de clínica (primeira tela após login) */}
+          <Route path="/clinicas" element={<ClinicSelection />} />
+
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             {/* Futuras rotas protegidas aqui */}

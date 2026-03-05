@@ -12,7 +12,7 @@ export const useLogin = () => {
     mutationFn: authService.login,
     onSuccess: (data) => {
       authLogin(data);
-      navigate("/dashboard");
+      navigate("/clinicas");
     },
   });
 
