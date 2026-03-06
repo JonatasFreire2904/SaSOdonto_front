@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import ClinicCard from "@/components/ui/ClinicCard";
+import CreateClinicModal from "@/components/ui/CreateClinicModal";
 import api from "@/api/axiosConfig";
 
 // Tipo para representar os dados de uma clínica
@@ -20,6 +21,9 @@ const ClinicSelection = () => {
 
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchClinics = async () => {
@@ -44,10 +48,19 @@ const ClinicSelection = () => {
     navigate("/dashboard");
   };
 
-  const handleCreateClinic = () => {
-    // rota adicionar clinica (POST /clinicas)
-    // TODO: abrir modal ou navegar para página de criação
-    navigate("/clinicas/nova");
+  const handleCreateClinic = async (data: { name: string; location: string; imageUrl?: string }) => {
+    setCreateError(null);
+    setIsCreating(true);
+    try {
+      // rota adicionar clinica (POST /clinicas)
+      const response = await api.post("/clinicas", data);
+      setClinics((prev) => [...prev, response.data]);
+      setIsModalOpen(false);
+    } catch {
+      setCreateError("Erro ao criar clínica. Tente novamente.");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleLogout = () => {
@@ -145,7 +158,7 @@ const ClinicSelection = () => {
 
               {/* Card de criar nova clínica */}
               <button
-                onClick={handleCreateClinic}
+                onClick={() => setIsModalOpen(true)}
                 className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-primary hover:bg-primary/5 transition-all duration-300 group min-h-[320px]"
               >
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
@@ -186,6 +199,19 @@ const ClinicSelection = () => {
           </div>
         </div>
       </main>
+
+      {/* Modal de criação de clínica */}
+      <CreateClinicModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setCreateError(null);
+        }}
+        onSubmit={handleCreateClinic}
+        onSuccess={() => {}}
+        isSubmitting={isCreating}
+        error={createError}
+      />
     </div>
   );
 };

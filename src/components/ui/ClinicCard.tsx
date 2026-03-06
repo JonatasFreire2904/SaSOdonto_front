@@ -28,11 +28,19 @@ const ClinicCard = ({
       className="group relative flex flex-col text-left bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:border-primary/50 transition-all duration-300"
     >
       <div className="aspect-video w-full bg-slate-100 dark:bg-slate-800 relative">
-        <img
-          className="w-full h-full object-cover"
-          src={imageUrl}
-          alt={`Imagem da clínica ${name}`}
-        />
+        {imageUrl ? (
+          <img
+            className="w-full h-full object-cover"
+            src={imageUrl}
+            alt={`Imagem da clínica ${name}`}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-primary/5">
+            <span className="material-symbols-outlined text-6xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+              dentistry
+            </span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 left-4">
           <span
