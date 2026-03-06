@@ -3,6 +3,8 @@ import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import ClinicSelection from "@/pages/clinic/ClinicSelection";
 import Dashboard from "@/pages/dashboard/Dashboard";
+import PatientRecord from "@/pages/patients/PatientRecord";
+import PatientList from "@/pages/patients/PatientList";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 
@@ -21,6 +23,8 @@ const AppRoutes = () => {
 
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/pacientes" element={<PatientList />} />
+            <Route path="/dashboard/pacientes/:id" element={<PatientRecord />} />
             {/* Futuras rotas protegidas aqui */}
           </Route>
         </Route>
