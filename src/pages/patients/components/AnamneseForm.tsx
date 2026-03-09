@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import api from "@/api/axiosConfig";
 
+export interface CustomField {
+  id?: string;
+  question: string;
+  answer: string;
+}
+
 export interface AnamneseData {
   id?: string;
   hasDiabetes: boolean;
@@ -21,6 +27,7 @@ export interface AnamneseData {
   previousSurgeries: string;
   familyHistory: string;
   observations: string;
+  customFields: CustomField[];
 }
 
 const defaultAnamnese: AnamneseData = {
@@ -42,6 +49,7 @@ const defaultAnamnese: AnamneseData = {
   previousSurgeries: "",
   familyHistory: "",
   observations: "",
+  customFields: [],
 };
 
 const booleanFields: { key: keyof AnamneseData; label: string; icon: string }[] = [
@@ -71,9 +79,10 @@ const textFields: { key: keyof AnamneseData; label: string; placeholder: string 
 interface AnamneseFormProps {
   clinicId: string;
   patientId: string;
+  onSave?: (data: AnamneseData) => void;
 }
 
-const AnamneseForm = ({ clinicId, patientId }: AnamneseFormProps) => {
+const AnamneseForm = ({ clinicId, patientId, onSave }: AnamneseFormProps) => {
   const [data, setData] = useState<AnamneseData>(defaultAnamnese);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,12 +108,43 @@ const AnamneseForm = ({ clinicId, patientId }: AnamneseFormProps) => {
     setSaved(false);
   };
 
+  const handleAddCustomField = () => {
+    setData((prev) => ({
+      ...prev,
+      customFields: [...prev.customFields, { question: "", answer: "" }],
+    }));
+    setSaved(false);
+  };
+
+  const handleCustomFieldChange = (index: number, field: "question" | "answer", value: string) => {
+    setData((prev) => {
+      const updated = [...prev.customFields];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, customFields: updated };
+    });
+    setSaved(false);
+  };
+
+  const handleRemoveCustomField = (index: number) => {
+    setData((prev) => ({
+      ...prev,
+      customFields: prev.customFields.filter((_, i) => i !== index),
+    }));
+    setSaved(false);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const { id, ...body } = data;
-      await api.put(`/clinicas/${clinicId}/pacientes/${patientId}/anamnese`, body);
+      // Enviar customFields sem o id (backend faz replace completo)
+      const payload = {
+        ...body,
+        customFields: body.customFields.map(({ question, answer }) => ({ question, answer })),
+      };
+      await api.put(`/clinicas/${clinicId}/pacientes/${patientId}/anamnese`, payload);
       setSaved(true);
+      onSave?.(data);
     } catch {
       alert("Erro ao salvar anamnese.");
     } finally {
@@ -170,6 +210,65 @@ const AnamneseForm = ({ clinicId, patientId }: AnamneseFormProps) => {
                 value={(data[key] as string) || ""}
                 onChange={(e) => handleTextChange(key, e.target.value)}
                 placeholder={placeholder}
+                rows={2}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Campos Personalizados */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">quiz</span>
+            Perguntas Personalizadas
+          </h3>
+          <button
+            type="button"
+            onClick={handleAddCustomField}
+            className="flex items-center gap-1 text-primary text-sm font-bold hover:underline"
+          >
+            <span className="material-symbols-outlined text-lg">add_circle</span>
+            Adicionar
+          </button>
+        </div>
+
+        {data.customFields.length === 0 && (
+          <p className="text-sm text-slate-400 text-center py-4">
+            Nenhuma pergunta personalizada. Clique em "Adicionar" para criar.
+          </p>
+        )}
+
+        <div className="space-y-4">
+          {data.customFields.map((cf, index) => (
+            <div
+              key={index}
+              className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Pergunta {index + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCustomField(index)}
+                  className="text-red-400 hover:text-red-600 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-lg">delete</span>
+                </button>
+              </div>
+              <input
+                value={cf.question}
+                onChange={(e) => handleCustomFieldChange(index, "question", e.target.value)}
+                placeholder="Ex: Tem medo de dentista?"
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              />
+              <textarea
+                value={cf.answer}
+                onChange={(e) => handleCustomFieldChange(index, "answer", e.target.value)}
+                placeholder="Resposta do paciente..."
                 rows={2}
                 className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
               />
