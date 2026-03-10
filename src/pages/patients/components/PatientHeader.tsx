@@ -46,9 +46,6 @@ const PatientHeader = ({ patient, allergies, risks, onPrint, onNewAppointment }:
         <div className="flex flex-col">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{patient.fullName}</h1>
-            <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded">
-              ID: #{patient.id}
-            </span>
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium">
             {calcAge(patient.birthDate)} anos • {genderLabel(patient.gender)} • {new Date(patient.birthDate).toLocaleDateString("pt-BR")}

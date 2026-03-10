@@ -13,6 +13,7 @@ import type { Atendimento } from "./components/ProceduresTable";
 import type { ProntuarioEntry } from "./components/MedicalAlerts";
 import type { ToothData } from "./components/Odontogram";
 import type { MediaItem } from "./components/PatientMedia";
+import type { AnamneseSnapshot } from "./components/MedicalAlerts";
 
 interface Patient {
   id: string;
@@ -47,6 +48,7 @@ const PatientRecord = () => {
   const [upperTeeth, setUpperTeeth] = useState<ToothData[]>([]);
   const [lowerTeeth, setLowerTeeth] = useState<ToothData[]>([]);
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [anamnese, setAnamnese] = useState<AnamneseSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
 
@@ -56,13 +58,14 @@ const PatientRecord = () => {
     const fetchPatientData = async () => {
       try {
         const base = `/clinicas/${clinicId}`;
-        const [patientRes, atendimentosRes, alertasRes, odontoRes, mediaRes] =
+        const [patientRes, atendimentosRes, alertasRes, odontoRes, mediaRes, anamneseRes] =
           await Promise.all([
             api.get(`${base}/pacientes/${id}`),
             api.get(`${base}/atendimentos/paciente/${id}`),
             api.get(`${base}/pacientes/${id}/prontuario/alertas`),
             api.get(`${base}/pacientes/${id}/odontograma`),
             api.get(`${base}/pacientes/${id}/midias`),
+            api.get(`${base}/pacientes/${id}/anamnese`).catch(() => ({ data: null })),
           ]);
 
         setPatient(patientRes.data);
@@ -71,6 +74,7 @@ const PatientRecord = () => {
         setUpperTeeth(odontoRes.data.upperTeeth);
         setLowerTeeth(odontoRes.data.lowerTeeth);
         setMedia(mediaRes.data);
+        if (anamneseRes.data && anamneseRes.data.id) setAnamnese(anamneseRes.data);
       } catch (error) {
         console.error("Erro ao carregar dados do paciente:", error);
       } finally {
@@ -227,6 +231,7 @@ const PatientRecord = () => {
             <div className="lg:col-span-4 flex flex-col gap-6">
               <MedicalAlerts
                 entries={alertas}
+                anamnese={anamnese}
                 onAddEntry={handleAddProntuario}
               />
               <PatientMedia
@@ -259,7 +264,11 @@ const PatientRecord = () => {
         )}
 
         {activeTab === "anamnese" && clinicId && id && (
-          <AnamneseForm clinicId={clinicId} patientId={id} />
+          <AnamneseForm
+            clinicId={clinicId}
+            patientId={id}
+            onSave={(savedData) => setAnamnese(savedData)}
+          />
         )}
 
         {activeTab === "arquivos" && (
