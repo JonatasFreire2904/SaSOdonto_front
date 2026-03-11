@@ -2,7 +2,7 @@ import { useState } from "react";
 
 export interface ToothData {
   number: number;
-  status: "normal" | "decay" | "done" | "pending";
+  status: "normal" | "decay" | "done" | "pending" | "extracted";
   notes: string | null;
 }
 
@@ -16,6 +16,8 @@ const toothStatusClass = (status: ToothData["status"], isActive: boolean) => {
   const base = "tooth-item text-[10px] font-bold transition-all cursor-pointer";
   if (isActive) return `${base} border-primary bg-primary/10 text-primary shadow-[0_0_0_2px_rgba(25,115,240,0.2)]`;
   switch (status) {
+    case "extracted":
+      return `${base} bg-red-500/10 border-red-500 text-red-600 line-through`;
     case "decay":
       return `${base} bg-red-500/10 border-red-500 text-red-600`;
     case "done":
@@ -44,7 +46,7 @@ const Odontogram = ({ upperTeeth, lowerTeeth, onToothClick }: OdontogramProps) =
         </h3>
         <div className="flex gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
           <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-red-500" /> Cárie
+            <span className="size-2 rounded-full bg-red-500" /> Ausente
           </span>
           <span className="flex items-center gap-1">
             <span className="size-2 rounded-full bg-primary" /> Concluído
