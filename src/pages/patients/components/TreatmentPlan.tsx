@@ -1,9 +1,11 @@
 import { FormEvent, useState } from "react";
-import { useTreatmentPlan } from "@/hooks/queries/useTreatmentPlan";
-import { useCreatePlanItem } from "@/hooks/mutations/useCreatePlanItem";
-import { useUpdatePlanItem } from "@/hooks/mutations/useUpdatePlanItem";
-import { useDeletePlanItem } from "@/hooks/mutations/useDeletePlanItem";
-import { useDeleteAllPlan } from "@/hooks/mutations/useDeleteAllPlan";
+import {
+  useTreatmentPlan,
+  useCreatePlanItem,
+  useUpdatePlanItem,
+  useDeletePlanItem,
+  useDeleteAllPlan,
+} from "@/hooks/useTreatmentPlan";
 
 interface TreatmentPlanProps {
   clinicId: string;

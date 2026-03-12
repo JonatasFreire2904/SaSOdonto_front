@@ -4,13 +4,12 @@ export interface Procedimento {
   id: string;
   name: string;
   category?: string;
-  isDefault?: boolean;
 }
 
 export interface ToothProcedureRequest {
   toothNumber: number;
   procedureId: string;
-  faces: string; // "V,M,O"
+  faces: string; // ex: "V,M,O"
   notes?: string;
 }
 
@@ -57,40 +56,5 @@ export const odontogramService = {
       `/clinicas/${clinicId}/pacientes/${patientId}/odontograma/${toothNumber}`,
       data
     );
-  },
-
-  async getPatientProcedures(
-    clinicId: string,
-    patientId: string
-  ): Promise<ToothProcedureResponse[]> {
-    const response = await api.get(
-      `/clinicas/${clinicId}/pacientes/${patientId}/odontograma/procedimentos`
-    );
-    return response.data;
-  },
-
-  async deleteToothProcedure(
-    clinicId: string,
-    patientId: string,
-    procedureId: string
-  ): Promise<void> {
-    await api.delete(
-      `/clinicas/${clinicId}/pacientes/${patientId}/odontograma/procedimentos/${procedureId}`
-    );
-  },
-
-  async createCustomProcedure(
-    clinicId: string,
-    data: { name: string; category?: string }
-  ): Promise<Procedimento> {
-    const response = await api.post(`/clinicas/${clinicId}/procedimentos`, data);
-    return response.data;
-  },
-
-  async deleteClinicProcedure(
-    clinicId: string,
-    procedureId: string
-  ): Promise<void> {
-    await api.delete(`/clinicas/${clinicId}/procedimentos/${procedureId}`);
   },
 };

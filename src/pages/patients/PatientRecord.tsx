@@ -30,10 +30,11 @@ interface Patient {
   createdAt: string;
 }
 
-type TabKey = "prontuario" | "historico" | "anamnese" | "arquivos" | "anotacoes" | "plano";
+type TabKey = "prontuario" | "plano" | "historico" | "anamnese" | "arquivos" | "anotacoes";
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: "prontuario", label: "Prontuário", icon: "grid_view" },
+  { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
   { key: "historico", label: "Histórico", icon: "history" },
   { key: "anamnese", label: "Anamnese", icon: "checklist" },
   { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
@@ -135,13 +136,13 @@ const PatientRecord = () => {
     setShowToothModal(true);
   };
 
-  const handleToothProcedureSuccess = async () => {
-    try {
-      const odontoRes = await api.get(`/clinicas/${clinicId}/pacientes/${id}/odontograma`);
-      setUpperTeeth(odontoRes.data.upperTeeth);
-      setLowerTeeth(odontoRes.data.lowerTeeth);
-    } catch (e) {
-      console.error("Erro ao recarregar odontograma:", e);
+  const handleToothProcedureSuccess = () => {
+    // Recarregar odontograma após salvar procedimento
+    if (clinicId && id) {
+      api.get(`/clinicas/${clinicId}/pacientes/${id}/odontograma`).then((res) => {
+        setUpperTeeth(res.data.upperTeeth);
+        setLowerTeeth(res.data.lowerTeeth);
+      });
     }
   };
 
@@ -274,6 +275,11 @@ const PatientRecord = () => {
           </div>
         )}
 
+        {/* Tab Plano de Tratamento */}
+        {activeTab === "plano" && clinicId && id && (
+          <TreatmentPlan clinicId={clinicId} patientId={id} />
+        )}
+
         {/* Placeholder para outras tabs */}
         {activeTab === "historico" && (
           <div className="flex items-center justify-center py-20 text-slate-400">
@@ -338,14 +344,15 @@ const PatientRecord = () => {
         />
       )}
 
-      {clinicId && id && (
+      {/* Modal Detalhe do Dente */}
+      {clinicId && (
         <ToothDetailModal
           isOpen={showToothModal}
           onClose={() => setShowToothModal(false)}
           onSuccess={handleToothProcedureSuccess}
           tooth={selectedTooth}
           clinicId={clinicId}
-          patientId={id}
+          patientId={id!}
         />
       )}
     </>
