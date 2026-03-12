@@ -142,7 +142,7 @@ const AnamneseForm = ({ clinicId, patientId, onSave }: AnamneseFormProps) => {
         ...body,
         customFields: body.customFields.map(({ question, answer }) => ({ question, answer })),
       };
-      await api.put(`/clinicas/${clinicId}/pacientes/${patientId}/anamnese`, payload);
+      await api.post(`/clinicas/${clinicId}/pacientes/${patientId}/anamnese`, payload);
       setSaved(true);
       onSave?.(data);
     } catch {

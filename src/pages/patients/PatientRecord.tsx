@@ -9,6 +9,8 @@ import PatientMedia from "./components/PatientMedia";
 import NextVisitCard from "./components/NextVisitCard";
 import AnamneseForm from "./components/AnamneseForm";
 import CreateAppointmentModal from "./components/CreateAppointmentModal";
+import ToothDetailModal from "./components/ToothDetailModal";
+import TreatmentPlan from "./components/TreatmentPlan";
 import type { Atendimento } from "./components/ProceduresTable";
 import type { ProntuarioEntry } from "./components/MedicalAlerts";
 import type { ToothData } from "./components/Odontogram";
@@ -28,12 +30,13 @@ interface Patient {
   createdAt: string;
 }
 
-type TabKey = "prontuario" | "historico" | "anamnese" | "arquivos" | "anotacoes";
+type TabKey = "prontuario" | "historico" | "anamnese" | "arquivos" | "anotacoes" | "plano";
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: "prontuario", label: "Prontuário", icon: "grid_view" },
   { key: "historico", label: "Histórico", icon: "history" },
   { key: "anamnese", label: "Anamnese", icon: "checklist" },
+  { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
   { key: "arquivos", label: "Arquivos e Raio-X", icon: "photo_library" },
   { key: "anotacoes", label: "Anotações", icon: "edit_note" },
 ];
@@ -51,6 +54,8 @@ const PatientRecord = () => {
   const [anamnese, setAnamnese] = useState<AnamneseSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [showToothModal, setShowToothModal] = useState(false);
+  const [selectedTooth, setSelectedTooth] = useState<ToothData | null>(null);
 
   const clinicId = localStorage.getItem("selectedClinicId");
 
@@ -61,15 +66,21 @@ const PatientRecord = () => {
         const [patientRes, atendimentosRes, alertasRes, odontoRes, mediaRes, anamneseRes] =
           await Promise.all([
             api.get(`${base}/pacientes/${id}`),
-            api.get(`${base}/atendimentos/paciente/${id}`),
-            api.get(`${base}/pacientes/${id}/prontuario/alertas`),
+            api.get(`${base}/atendimentos`),
+            api.get(`${base}/pacientes/${id}/prontuario`),
             api.get(`${base}/pacientes/${id}/odontograma`),
             api.get(`${base}/pacientes/${id}/midias`),
             api.get(`${base}/pacientes/${id}/anamnese`).catch(() => ({ data: null })),
           ]);
 
         setPatient(patientRes.data);
-        setAtendimentos(atendimentosRes.data);
+        // Filtrar atendimentos pelo paciente (GET /atendimentos retorna todos da clínica)
+        const allAtendimentos = atendimentosRes.data;
+        setAtendimentos(
+          Array.isArray(allAtendimentos)
+            ? allAtendimentos.filter((a: Atendimento) => a.patientId === id)
+            : []
+        );
         setAlertas(alertasRes.data);
         setUpperTeeth(odontoRes.data.upperTeeth);
         setLowerTeeth(odontoRes.data.lowerTeeth);
@@ -120,8 +131,18 @@ const PatientRecord = () => {
   };
 
   const handleToothClick = (tooth: ToothData) => {
-    // TODO: abrir painel lateral com detalhes do dente
-    console.log("Dente selecionado:", tooth.number, tooth.notes);
+    setSelectedTooth(tooth);
+    setShowToothModal(true);
+  };
+
+  const handleToothProcedureSuccess = async () => {
+    try {
+      const odontoRes = await api.get(`/clinicas/${clinicId}/pacientes/${id}/odontograma`);
+      setUpperTeeth(odontoRes.data.upperTeeth);
+      setLowerTeeth(odontoRes.data.lowerTeeth);
+    } catch (e) {
+      console.error("Erro ao recarregar odontograma:", e);
+    }
   };
 
   const handleUploadMedia = () => {
@@ -289,6 +310,10 @@ const PatientRecord = () => {
           </div>
         )}
 
+        {activeTab === "plano" && clinicId && id && (
+          <TreatmentPlan clinicId={clinicId} patientId={id} />
+        )}
+
         {/* Footer */}
         <footer className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-widest pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -310,6 +335,17 @@ const PatientRecord = () => {
           patientId={id!}
           patientName={patient.fullName}
           clinicId={clinicId}
+        />
+      )}
+
+      {clinicId && id && (
+        <ToothDetailModal
+          isOpen={showToothModal}
+          onClose={() => setShowToothModal(false)}
+          onSuccess={handleToothProcedureSuccess}
+          tooth={selectedTooth}
+          clinicId={clinicId}
+          patientId={id}
         />
       )}
     </>

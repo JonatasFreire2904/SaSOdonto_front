@@ -1,42 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "@/api/axiosConfig";
-
-interface Patient {
-  id: string;
-  fullName: string;
-  cpf: string;
-  birthDate: string;
-  gender: string;
-  phone: string;
-  email: string;
-  address: string;
-  notes: string;
-  createdAt: string;
-}
+import { usePatients } from "@/hooks/queries/usePatients";
+import CreatePatientModal from "./components/CreatePatientModal";
+import type { Patient } from "@/api/patientService";
 
 const PatientList = () => {
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
-  const clinicId = localStorage.getItem("selectedClinicId");
+  const clinicId = localStorage.getItem("selectedClinicId") || "";
 
+  // Debounce de 400ms para busca no servidor
   useEffect(() => {
-    if (!clinicId) return;
-    api
-      .get(`/clinicas/${clinicId}/pacientes`)
-      .then((res) => setPatients(res.data))
-      .catch(() => setPatients([]))
-      .finally(() => setLoading(false));
-  }, [clinicId]);
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const filtered = patients.filter(
-    (p) =>
-      p.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (p.email?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
-      (p.phone?.includes(search) ?? false)
+  const { data: patients = [], isLoading: loading, refetch } = usePatients(
+    clinicId,
+    debouncedSearch || undefined
   );
+
+  const filtered = patients;
 
   return (
     <div className="p-8">
@@ -50,7 +36,10 @@ const PatientList = () => {
             Gerencie os pacientes da clínica
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors">
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors"
+        >
           <span className="material-symbols-outlined text-xl">person_add</span>
           Novo Paciente
         </button>
@@ -137,6 +126,15 @@ const PatientList = () => {
             </tbody>
           </table>
         </div>
+      )}
+
+      {clinicId && (
+        <CreatePatientModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => refetch()}
+          clinicId={clinicId}
+        />
       )}
     </div>
   );
