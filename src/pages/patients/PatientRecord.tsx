@@ -37,6 +37,7 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
   { key: "historico", label: "Histórico", icon: "history" },
   { key: "anamnese", label: "Anamnese", icon: "checklist" },
+  { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
   { key: "arquivos", label: "Arquivos e Raio-X", icon: "photo_library" },
   { key: "anotacoes", label: "Anotações", icon: "edit_note" },
 ];
@@ -66,15 +67,21 @@ const PatientRecord = () => {
         const [patientRes, atendimentosRes, alertasRes, odontoRes, mediaRes, anamneseRes] =
           await Promise.all([
             api.get(`${base}/pacientes/${id}`),
-            api.get(`${base}/atendimentos/paciente/${id}`),
-            api.get(`${base}/pacientes/${id}/prontuario/alertas`),
+            api.get(`${base}/atendimentos`),
+            api.get(`${base}/pacientes/${id}/prontuario`),
             api.get(`${base}/pacientes/${id}/odontograma`),
             api.get(`${base}/pacientes/${id}/midias`),
             api.get(`${base}/pacientes/${id}/anamnese`).catch(() => ({ data: null })),
           ]);
 
         setPatient(patientRes.data);
-        setAtendimentos(atendimentosRes.data);
+        // Filtrar atendimentos pelo paciente (GET /atendimentos retorna todos da clínica)
+        const allAtendimentos = atendimentosRes.data;
+        setAtendimentos(
+          Array.isArray(allAtendimentos)
+            ? allAtendimentos.filter((a: Atendimento) => a.patientId === id)
+            : []
+        );
         setAlertas(alertasRes.data);
         setUpperTeeth(odontoRes.data.upperTeeth);
         setLowerTeeth(odontoRes.data.lowerTeeth);
@@ -307,6 +314,10 @@ const PatientRecord = () => {
               <p className="mt-2 font-bold">Anotações — em breve</p>
             </div>
           </div>
+        )}
+
+        {activeTab === "plano" && clinicId && id && (
+          <TreatmentPlan clinicId={clinicId} patientId={id} />
         )}
 
         {/* Footer */}
