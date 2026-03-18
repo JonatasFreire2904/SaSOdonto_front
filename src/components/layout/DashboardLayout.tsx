@@ -73,6 +73,7 @@ const DashboardLayout = () => {
             Administrativo
           </div>
 
+          <SidebarItem to="/dashboard/profissionais" icon="badge" label="Profissionais" />
           <SidebarItem to="/dashboard/configuracoes" icon="settings" label="Configurações" />
         </nav>
 
