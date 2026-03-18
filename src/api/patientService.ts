@@ -35,10 +35,38 @@ export interface UpdatePatientRequest {
   notes?: string;
 }
 
+export interface PaginatedPatients {
+  data: Patient[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ListPatientsParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  signal?: AbortSignal;
+}
+
 export const patientService = {
-  async list(clinicId: string, search?: string): Promise<Patient[]> {
-    const params = search ? { q: search } : {};
-    const response = await api.get(`/clinicas/${clinicId}/pacientes`, { params });
+  async list(clinicId: string, params: ListPatientsParams = {}): Promise<PaginatedPatients> {
+    const { page = 1, pageSize = 10, search, signal } = params;
+    const response = await api.get(`/clinicas/${clinicId}/pacientes`, {
+      params: { page, pageSize, search: search || undefined },
+      signal,
+    });
+    // suporte a backend que retorna array simples (sem paginação ainda)
+    if (Array.isArray(response.data)) {
+      return {
+        data: response.data,
+        total: response.data.length,
+        page,
+        pageSize,
+        totalPages: 1,
+      };
+    }
     return response.data;
   },
 
