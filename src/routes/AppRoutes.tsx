@@ -8,6 +8,7 @@ import PatientList from "@/pages/patients/PatientList";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import ProfessionalList from "@/pages/professionals/ProfessionalList";
+import ComingSoon from "@/pages/ComingSoon";
 
 const AppRoutes = () => {
   return (
@@ -27,12 +28,15 @@ const AppRoutes = () => {
             <Route path="/dashboard/pacientes" element={<PatientList />} />
             <Route path="/dashboard/pacientes/:id" element={<PatientRecord />} />
             <Route path="/dashboard/profissionais" element={<ProfessionalList />} />
+            <Route path="/dashboard/agendamentos" element={<ComingSoon label="Agendamentos" />} />
+            <Route path="/dashboard/financeiro" element={<ComingSoon label="Financeiro" />} />
+            <Route path="/dashboard/configuracoes" element={<ComingSoon label="Configurações" />} />
             {/* Futuras rotas protegidas aqui */}
           </Route>
         </Route>
 
         {/* Redirect padrão */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
