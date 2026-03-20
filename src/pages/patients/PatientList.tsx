@@ -3,21 +3,33 @@ import { useNavigate } from "react-router-dom";
 import { usePatients, useDebounce } from "@/hooks/queries/usePatients";
 import CreatePatientModal from "./components/CreatePatientModal";
 import Pagination from "@/components/ui/Pagination";
+import type { PatientStatus } from "@/api/patientService";
 
 const PAGE_SIZE = 10;
+
+const STATUS_OPTIONS: { value: PatientStatus; label: string }[] = [
+  { value: "Active", label: "Ativos" },
+  { value: "Inactive", label: "Inativos" },
+  { value: "Suspended", label: "Suspensos" },
+];
 
 const PatientList = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<PatientStatus>("Active");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
   const clinicId = localStorage.getItem("selectedClinicId") || "";
 
   const debouncedSearch = useDebounce(search, 500);
 
-  // reset to page 1 when search changes
   const handleSearch = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (value: PatientStatus) => {
+    setStatus(value);
     setPage(1);
   };
 
@@ -25,12 +37,13 @@ const PatientList = () => {
     clinicId,
     debouncedSearch,
     page,
-    PAGE_SIZE
+    PAGE_SIZE,
+    status
   );
 
   const patients = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
-  const total = data?.total ?? 0;
+  const total = data?.totalCount ?? 0;
 
   return (
     <div className="p-8">
@@ -49,23 +62,41 @@ const PatientList = () => {
         </button>
       </div>
 
-      {/* Busca */}
-      <div className="relative mb-6">
-        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-          search
-        </span>
-        <input
-          type="text"
-          placeholder="Buscar por nome, e-mail ou telefone..."
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-        />
-        {isFetching && !isLoading && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
+      {/* Busca + Filtro de status */}
+      <div className="flex gap-3 mb-6">
+        <div className="relative flex-1">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            search
+          </span>
+          <input
+            type="text"
+            placeholder="Buscar por nome, e-mail ou telefone..."
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          />
+          {isFetching && !isLoading && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
+          {STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => handleStatusChange(opt.value)}
+              className={`px-4 py-2.5 text-sm font-semibold transition-colors ${
+                status === opt.value
+                  ? "bg-primary text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tabela */}

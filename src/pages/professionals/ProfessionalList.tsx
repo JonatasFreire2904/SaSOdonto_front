@@ -3,15 +3,15 @@ import { useProfessionals } from "@/hooks/queries/useProfessionals";
 import { useDeleteProfessional } from "@/hooks/mutations/useDeleteProfessional";
 import { useUpdateProfessionalRole } from "@/hooks/mutations/useUpdateProfessionalRole";
 import CreateProfessionalModal from "./components/CreateProfessionalModal";
-import { formatRole } from "./utils";
+import EditProfessionalModal from "./components/EditProfessionalModal";
+import { formatRole, ROLE_OPTIONS } from "./utils";
 import type { Professional } from "@/api/professionalService";
-
-const ROLES = ["dentista", "rh", "auxiliar", "gestor"] as const;
 
 const ProfessionalList = () => {
   const clinicId = localStorage.getItem("selectedClinicId") ?? "";
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
+  const [roleEditingId, setRoleEditingId] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>("");
 
   const { data: professionals = [], isLoading, refetch } = useProfessionals(clinicId);
@@ -19,17 +19,17 @@ const ProfessionalList = () => {
   const { updateRole } = useUpdateProfessionalRole(clinicId);
 
   const handleEditClick = (professional: Professional) => {
-    setEditingId(professional.id);
+    setRoleEditingId(professional.id);
     setSelectedRole(professional.role);
   };
 
   const handleConfirmRole = (id: string) => {
     updateRole({ id, role: selectedRole });
-    setEditingId(null);
+    setRoleEditingId(null);
   };
 
   const handleCancelEdit = () => {
-    setEditingId(null);
+    setRoleEditingId(null);
     setSelectedRole("");
   };
 
@@ -108,15 +108,15 @@ const ProfessionalList = () => {
                     {professional.email}
                   </td>
                   <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
-                    {editingId === professional.id ? (
+                    {roleEditingId === professional.id ? (
                       <select
                         value={selectedRole}
                         onChange={(e) => setSelectedRole(e.target.value)}
                         className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {formatRole(r)}
+                        {ROLE_OPTIONS.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.label}
                           </option>
                         ))}
                       </select>
@@ -129,7 +129,7 @@ const ProfessionalList = () => {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
-                      {editingId === professional.id ? (
+                      {roleEditingId === professional.id ? (
                         <>
                           <button
                             onClick={() => handleConfirmRole(professional.id)}
@@ -147,13 +147,22 @@ const ProfessionalList = () => {
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={() => handleEditClick(professional)}
-                          className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">edit</span>
-                          Editar cargo
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setEditingProfessional(professional)}
+                            className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">edit</span>
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleEditClick(professional)}
+                            className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">badge</span>
+                            Cargo
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => deleteProfessional(professional.id)}
@@ -177,6 +186,16 @@ const ProfessionalList = () => {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => refetch()}
           clinicId={clinicId}
+        />
+      )}
+
+      {clinicId && editingProfessional && (
+        <EditProfessionalModal
+          isOpen={!!editingProfessional}
+          onClose={() => setEditingProfessional(null)}
+          onSuccess={() => refetch()}
+          clinicId={clinicId}
+          professional={editingProfessional}
         />
       )}
     </div>
