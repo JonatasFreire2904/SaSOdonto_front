@@ -1,5 +1,7 @@
 import api from "./axiosConfig";
 
+export type PatientStatus = "Active" | "Inactive" | "Suspended";
+
 export interface Patient {
   id: string;
   fullName: string;
@@ -10,6 +12,7 @@ export interface Patient {
   email: string;
   address: string;
   notes: string;
+  status: PatientStatus;
   createdAt: string;
 }
 
@@ -35,9 +38,13 @@ export interface UpdatePatientRequest {
   notes?: string;
 }
 
-export interface PaginatedPatients {
-  data: Patient[];
-  total: number;
+export interface UpdatePatientStatusRequest {
+  status: PatientStatus;
+}
+
+export interface PagedResponse<T> {
+  data: T[];
+  totalCount: number;
   page: number;
   pageSize: number;
   totalPages: number;
@@ -47,21 +54,22 @@ export interface ListPatientsParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  status?: PatientStatus;
   signal?: AbortSignal;
 }
 
 export const patientService = {
-  async list(clinicId: string, params: ListPatientsParams = {}): Promise<PaginatedPatients> {
-    const { page = 1, pageSize = 10, search, signal } = params;
+  async list(clinicId: string, params: ListPatientsParams = {}): Promise<PagedResponse<Patient>> {
+    const { page = 1, pageSize = 10, search, status = "Active", signal } = params;
     const response = await api.get(`/clinicas/${clinicId}/pacientes`, {
-      params: { page, pageSize, search: search || undefined },
+      params: { page, pageSize, search: search || undefined, status },
       signal,
     });
-    // suporte a backend que retorna array simples (sem paginação ainda)
+    // fallback: backend retorna array simples
     if (Array.isArray(response.data)) {
       return {
         data: response.data,
-        total: response.data.length,
+        totalCount: response.data.length,
         page,
         pageSize,
         totalPages: 1,
@@ -82,6 +90,11 @@ export const patientService = {
 
   async update(clinicId: string, patientId: string, data: UpdatePatientRequest): Promise<Patient> {
     const response = await api.put(`/clinicas/${clinicId}/pacientes/${patientId}`, data);
+    return response.data;
+  },
+
+  async updateStatus(clinicId: string, patientId: string, data: UpdatePatientStatusRequest): Promise<Patient> {
+    const response = await api.patch(`/clinicas/${clinicId}/pacientes/${patientId}/status`, data);
     return response.data;
   },
 

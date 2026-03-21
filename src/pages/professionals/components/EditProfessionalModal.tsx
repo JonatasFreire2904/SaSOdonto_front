@@ -1,31 +1,24 @@
 import { FormEvent, useState } from "react";
-import { useCreateProfessional } from "@/hooks/mutations/useCreateProfessional";
+import { useUpdateProfessional } from "@/hooks/mutations/useUpdateProfessional";
+import { validatePassword } from "./CreateProfessionalModal";
+import type { Professional } from "@/api/professionalService";
 
-interface CreateProfessionalModalProps {
+interface EditProfessionalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   clinicId: string;
+  professional: Professional;
 }
 
-export function validatePassword(password: string): string | null {
-  if (password.length < 8) return "A senha deve ter no mínimo 8 caracteres.";
-  if (!/[A-Z]/.test(password)) return "A senha deve conter ao menos uma letra maiúscula.";
-  if (!/[a-z]/.test(password)) return "A senha deve conter ao menos uma letra minúscula.";
-  if (!/[0-9]/.test(password)) return "A senha deve conter ao menos um número.";
-  if (!/[^A-Za-z0-9]/.test(password)) return "A senha deve conter ao menos um caractere especial.";
-  return null;
-}
-
-import { formatRole, ROLE_OPTIONS } from "../utils";
-
-const CreateProfessionalModal = ({
+const EditProfessionalModal = ({
   isOpen,
   onClose,
   onSuccess,
   clinicId,
-}: CreateProfessionalModalProps) => {
-  const { create, isLoading, error, reset } = useCreateProfessional(clinicId);
+  professional,
+}: EditProfessionalModalProps) => {
+  const { update, isLoading, error, reset } = useUpdateProfessional(clinicId);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const handleClose = () => {
@@ -39,22 +32,26 @@ const CreateProfessionalModal = ({
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const password = String(form.get("password"));
+    const password = String(form.get("password")).trim();
 
-    const pwError = validatePassword(password);
-    if (pwError) {
-      setPasswordError(pwError);
-      return;
+    // só valida senha se o usuário preencheu
+    if (password) {
+      const pwError = validatePassword(password);
+      if (pwError) {
+        setPasswordError(pwError);
+        return;
+      }
     }
     setPasswordError(null);
 
-    create(
+    update(
       {
-        userName: String(form.get("userName")).trim(),
-        email: String(form.get("email")).trim(),
-        password,
-        role: String(form.get("role")),
-        clinicId,
+        id: professional.id,
+        data: {
+          userName: String(form.get("userName")).trim(),
+          email: String(form.get("email")).trim(),
+          ...(password ? { password } : {}),
+        },
       },
       {
         onSuccess: () => {
@@ -73,11 +70,11 @@ const CreateProfessionalModal = ({
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined">person_add</span>
+              <span className="material-symbols-outlined">edit</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Novo Profissional</h3>
-              <p className="text-sm text-slate-500">Preencha os dados do profissional</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Editar Profissional</h3>
+              <p className="text-sm text-slate-500">Atualize os dados do profissional</p>
             </div>
           </div>
           <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -94,70 +91,49 @@ const CreateProfessionalModal = ({
           )}
 
           <div className="space-y-1">
-            <label htmlFor="userName" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label htmlFor="edit-userName" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               Nome de usuário *
             </label>
             <input
-              id="userName"
+              id="edit-userName"
               name="userName"
               type="text"
               required
-              placeholder="Ex: joaosilva"
-              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
+              defaultValue={professional.userName}
+              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <label htmlFor="edit-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               E-mail *
             </label>
             <input
-              id="email"
+              id="edit-email"
               name="email"
               type="email"
               required
-              placeholder="profissional@email.com"
-              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
+              defaultValue={professional.email}
+              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white"
             />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="password" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Senha *
+            <label htmlFor="edit-password" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Nova senha
+              <span className="ml-1 text-xs font-normal text-slate-400">(deixe em branco para manter a atual)</span>
             </label>
             <input
-              id="password"
+              id="edit-password"
               name="password"
               type="password"
-              required
-              placeholder="Mínimo 8 caracteres"
+              placeholder="Somente se quiser alterar"
               onChange={() => setPasswordError(null)}
               className={`block w-full px-4 py-3 border rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400 ${
-                passwordError
-                  ? "border-rose-400 dark:border-rose-500"
-                  : "border-slate-200 dark:border-slate-700"
+                passwordError ? "border-rose-400 dark:border-rose-500" : "border-slate-200 dark:border-slate-700"
               }`}
             />
-            {passwordError && (
-              <p className="text-xs text-rose-600 mt-1">{passwordError}</p>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="role" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Função *
-            </label>
-            <select
-              id="role"
-              name="role"
-              required
-              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white appearance-none"
-            >
-              <option value="">Selecione</option>
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
+            {passwordError && <p className="text-xs text-rose-600 mt-1">{passwordError}</p>}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -180,8 +156,8 @@ const CreateProfessionalModal = ({
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-lg">person_add</span>
-                  Cadastrar Profissional
+                  <span className="material-symbols-outlined text-lg">save</span>
+                  Salvar alterações
                 </>
               )}
             </button>
@@ -192,4 +168,4 @@ const CreateProfessionalModal = ({
   );
 };
 
-export default CreateProfessionalModal;
+export default EditProfessionalModal;
