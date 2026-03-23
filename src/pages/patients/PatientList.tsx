@@ -33,12 +33,15 @@ const PatientList = () => {
     setPage(1);
   };
 
+  const hasSearch = debouncedSearch.trim().length > 0;
+
   const { data, isLoading, isFetching, refetch } = usePatients(
     clinicId,
     debouncedSearch,
     page,
     PAGE_SIZE,
-    status
+    status,
+    hasSearch
   );
 
   const patients = data?.data ?? [];
@@ -100,7 +103,14 @@ const PatientList = () => {
       </div>
 
       {/* Tabela */}
-      {isLoading ? (
+      {!hasSearch ? (
+        <div className="text-center py-20">
+          <span className="material-symbols-outlined text-5xl text-slate-300 mb-3 block">
+            search
+          </span>
+          <p className="text-slate-500 font-medium">Digite um nome para buscar pacientes</p>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
