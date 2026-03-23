@@ -102,7 +102,7 @@ const PatientRecord = () => {
 
   // Derivar próxima visita do próximo atendimento agendado
   const nextScheduled = atendimentos
-    .filter(a => a.status === "scheduled" && new Date(a.scheduledAt) > new Date())
+    .filter(a => a.status === "Scheduled" && new Date(a.scheduledAt) > new Date())
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
 
   const nextVisit = nextScheduled
