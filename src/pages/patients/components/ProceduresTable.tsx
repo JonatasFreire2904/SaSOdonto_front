@@ -5,9 +5,10 @@ export interface Atendimento {
   notes: string | null;
   scheduledAt: string;
   completedAt: string | null;
-  status: "scheduled" | "completed" | "cancelled";
+  status: "Scheduled" | "Completed" | "Cancelled";
   price: number;
-  dentistName: string | null;
+  professionalId: string | null;
+  professionalName: string | null;
   tooth: string | null;
   patientId: string;
   patientName: string;
@@ -21,9 +22,9 @@ interface ProceduresTableProps {
 }
 
 const statusMap: Record<Atendimento["status"], { label: string; className: string }> = {
-  scheduled: { label: "Agendado", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  completed: { label: "Concluído", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  cancelled: { label: "Cancelado", className: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
+  Scheduled: { label: "Agendado", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  Completed: { label: "Concluído", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  Cancelled: { label: "Cancelado", className: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
 };
 
 const ProceduresTable = ({ atendimentos, totalCount, onViewAll }: ProceduresTableProps) => {
@@ -66,12 +67,12 @@ const ProceduresTable = ({ atendimentos, totalCount, onViewAll }: ProceduresTabl
                   <td className="px-6 py-4 font-bold text-primary">{item.procedure}</td>
                   <td className="px-6 py-4 font-medium">{item.tooth || "—"}</td>
                   <td className="px-6 py-4">
-                    {item.dentistName ? (
+                    {item.professionalName ? (
                       <div className="flex items-center gap-2">
                         <div className="size-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                           <span className="material-symbols-outlined text-xs">person</span>
                         </div>
-                        <span>{item.dentistName}</span>
+                        <span>{item.professionalName}</span>
                       </div>
                     ) : (
                       <span className="text-slate-400">—</span>

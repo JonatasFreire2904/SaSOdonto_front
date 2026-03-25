@@ -53,7 +53,8 @@ const CreateProfessionalModal = ({
         userName: String(form.get("userName")).trim(),
         email: String(form.get("email")).trim(),
         password,
-        role: String(form.get("role")),
+        role: String(form.get("role")) as any,
+        phone: String(form.get("phone")).trim() || undefined,
         clinicId,
       },
       {
@@ -117,6 +118,20 @@ const CreateProfessionalModal = ({
               type="email"
               required
               placeholder="profissional@email.com"
+              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="phone" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Telefone
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              maxLength={20}
+              placeholder="(11) 99999-9999"
               className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
             />
           </div>

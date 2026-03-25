@@ -1,4 +1,7 @@
 import { FormEvent, useState } from "react";
+import { atendimentoService } from "@/api/atendimentoService";
+import type { Atendimento } from "@/api/atendimentoService";
+import { useProfessionals } from "@/hooks/queries/useProfessionals";
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -8,24 +11,6 @@ interface CreateAppointmentModalProps {
   patientName: string;
   clinicId: string;
 }
-
-interface Atendimento {
-  id: string;
-  procedure: string;
-  description: string | null;
-  notes: string | null;
-  scheduledAt: string;
-  completedAt: string | null;
-  status: "scheduled" | "completed" | "cancelled";
-  price: number;
-  dentistName: string | null;
-  tooth: string | null;
-  patientId: string;
-  patientName: string;
-  createdAt: string;
-}
-
-import api from "@/api/axiosConfig";
 
 const CreateAppointmentModal = ({
   isOpen,
@@ -38,6 +23,9 @@ const CreateAppointmentModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { data: professionals = [] } = useProfessionals(clinicId);
+  const activeProfessionals = professionals.filter((p) => p.clinicId === clinicId);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -48,12 +36,17 @@ const CreateAppointmentModal = ({
     const procedure = String(form.get("procedure")).trim();
     const scheduledAt = String(form.get("scheduledAt")).trim();
     const priceStr = String(form.get("price")).trim();
-    const dentistName = String(form.get("dentistName")).trim() || null;
-    const tooth = String(form.get("tooth")).trim() || null;
-    const description = String(form.get("description")).trim() || null;
+    const professionalId = String(form.get("professionalId")).trim();
+    const tooth = String(form.get("tooth")).trim() || undefined;
+    const description = String(form.get("description")).trim() || undefined;
 
     if (!procedure || !scheduledAt) {
       setError("Procedimento e data/hora são obrigatórios.");
+      return;
+    }
+
+    if (!professionalId) {
+      setError("Selecione um profissional responsável.");
       return;
     }
 
@@ -65,21 +58,23 @@ const CreateAppointmentModal = ({
 
     setIsSubmitting(true);
     try {
-      const res = await api.post(`/clinicas/${clinicId}/atendimentos`, {
+      const result = await atendimentoService.create(clinicId, {
         procedure,
         description,
         scheduledAt: new Date(scheduledAt).toISOString(),
         price,
-        dentistName,
+        professionalId,
         tooth,
         patientId,
       });
-      onSuccess(res.data);
+      onSuccess(result);
       onClose();
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Erro ao criar agendamento.";
-      setError(msg);
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 400) setError("Profissional inválido para atendimentos.");
+      else if (status === 403) setError("Profissional não pertence a esta clínica.");
+      else if (status === 404) setError("Paciente ou profissional não encontrado.");
+      else setError("Erro ao criar agendamento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -87,13 +82,11 @@ const CreateAppointmentModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="relative bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
@@ -163,18 +156,30 @@ const CreateAppointmentModal = ({
             </div>
           </div>
 
-          {/* Dentista e Dente lado-a-lado */}
+          {/* Profissional e Dente lado-a-lado */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-dentist">
-                Responsável
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-professional">
+                Profissional *
               </label>
-              <input
-                id="appt-dentist"
-                name="dentistName"
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
-                placeholder="Responsável pelo atendimento"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="material-symbols-outlined text-slate-400 text-xl">person</span>
+                </div>
+                <select
+                  id="appt-professional"
+                  name="professionalId"
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none"
+                >
+                  <option value="">Selecionar...</option>
+                  {activeProfessionals.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.userName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-tooth">

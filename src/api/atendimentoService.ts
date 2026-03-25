@@ -1,5 +1,7 @@
 import api from "./axiosConfig";
 
+export type AtendimentoStatus = "Scheduled" | "Completed" | "Cancelled";
+
 export interface Atendimento {
   id: string;
   procedure: string;
@@ -7,9 +9,10 @@ export interface Atendimento {
   notes: string | null;
   scheduledAt: string;
   completedAt: string | null;
-  status: "scheduled" | "completed" | "cancelled";
+  status: AtendimentoStatus;
   price: number;
-  dentistName: string | null;
+  professionalId: string | null;
+  professionalName: string | null;
   tooth: string | null;
   patientId: string;
   patientName: string;
@@ -19,9 +22,10 @@ export interface Atendimento {
 export interface CreateAtendimentoRequest {
   procedure: string;
   description?: string;
+  notes?: string;
   scheduledAt: string;
   price?: number;
-  dentistName?: string;
+  professionalId: string;
   tooth?: string;
   patientId: string;
 }
@@ -38,7 +42,7 @@ export const atendimentoService = {
   },
 
   async concluir(clinicId: string, atendimentoId: string): Promise<Atendimento> {
-    const response = await api.put(
+    const response = await api.post(
       `/clinicas/${clinicId}/atendimentos/${atendimentoId}/concluir`
     );
     return response.data;

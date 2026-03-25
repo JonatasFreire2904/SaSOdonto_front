@@ -14,7 +14,8 @@ export const usePatients = (
   search: string,
   page: number,
   pageSize = 10,
-  status: PatientStatus = "Active"
+  status: PatientStatus = "Active",
+  enabled = true
 ) => {
   const abortRef = useRef<AbortController | null>(null);
 
@@ -31,7 +32,7 @@ export const usePatients = (
         signal: abortRef.current.signal,
       });
     },
-    enabled: !!clinicId,
+    enabled: !!clinicId && enabled,
     placeholderData: (prev) => prev,
   });
 };

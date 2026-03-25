@@ -7,6 +7,7 @@ export interface Professional {
   id: string;
   userName: string;
   email: string;
+  phone?: string;
   role: string;
   clinicId: string | null;
   createdAt: string;
@@ -17,13 +18,17 @@ export interface CreateProfessionalRequest {
   email: string;
   password: string;
   role: ProfessionalRole;
+  phone?: string;
   clinicId?: string;
 }
 
 export interface UpdateProfessionalRequest {
   userName: string;
   email: string;
+  phone?: string;
   password?: string;
+  role?: ProfessionalRole;
+  isActive?: boolean;
 }
 
 export interface UpdateProfessionalRoleRequest {
