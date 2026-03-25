@@ -15,6 +15,7 @@ interface TreatmentPlanOdontogramProps {
 const TreatmentPlanOdontogram = ({ clinicId, patientId }: TreatmentPlanOdontogramProps) => {
   const queryClient = useQueryClient();
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [showGeneralModal, setShowGeneralModal] = useState(false);
 
   const { data: plan, isLoading: isPlanLoading, isError: isPlanError, refetch: refetchPlan } = usePlan(clinicId, patientId);
 
@@ -90,6 +91,30 @@ const TreatmentPlanOdontogram = ({ clinicId, patientId }: TreatmentPlanOdontogra
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header com botão de adicionar procedimento geral */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <span className="material-symbols-outlined">assignment</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Plano de Tratamento</h3>
+              <p className="text-sm text-slate-500">
+                Clique em um dente ou adicione procedimentos gerais
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowGeneralModal(true)}
+            className="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-lg">add</span>
+            Adicionar Procedimento
+          </button>
+        </div>
+      </div>
+
       <PlanningOdontogram
         items={items ?? []}
         onToothClick={(n) => setSelectedTooth(n)}
@@ -119,6 +144,7 @@ const TreatmentPlanOdontogram = ({ clinicId, patientId }: TreatmentPlanOdontogra
         />
       )}
 
+      {/* Modal para dente específico */}
       <AddPlanItemModal
         isOpen={selectedTooth !== null}
         toothNumber={selectedTooth}
@@ -126,6 +152,16 @@ const TreatmentPlanOdontogram = ({ clinicId, patientId }: TreatmentPlanOdontogra
         patientId={patientId}
         planId={plan.id}
         onClose={() => setSelectedTooth(null)}
+      />
+
+      {/* Modal para procedimento geral */}
+      <AddPlanItemModal
+        isOpen={showGeneralModal}
+        toothNumber={null}
+        clinicId={clinicId}
+        patientId={patientId}
+        planId={plan.id}
+        onClose={() => setShowGeneralModal(false)}
       />
     </div>
   );

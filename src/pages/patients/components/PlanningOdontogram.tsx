@@ -42,25 +42,43 @@ interface PlanningOdontogramProps {
 function ToothButton({
   toothNumber,
   status,
+  count,
   onClick,
 }: {
   toothNumber: number;
   status: ToothDisplayStatus;
+  count: number;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-9 h-9 rounded border-2 text-[11px] font-bold transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-400 ${STATUS_CLASSES[status]}`}
-      aria-label={`Dente ${toothNumber}`}
+      className={`relative w-9 h-9 rounded border-2 text-[11px] font-bold transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-400 ${STATUS_CLASSES[status]}`}
+      aria-label={`Dente ${toothNumber}${count > 0 ? ` - ${count} procedimento${count > 1 ? 's' : ''}` : ''}`}
+      title={count > 0 ? `${count} procedimento${count > 1 ? 's' : ''} planejado${count > 1 ? 's' : ''}` : undefined}
     >
       {toothNumber}
+      {count > 1 && (
+        <div className={`absolute -top-1.5 -right-1.5 size-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-lg ${
+          count === 1 ? "bg-blue-500" : "bg-orange-500"
+        }`}>
+          {count}
+        </div>
+      )}
     </button>
   );
 }
 
 const PlanningOdontogram = ({ items, onToothClick }: PlanningOdontogramProps) => {
+  // Calcular contagem de procedimentos por dente
+  const toothCounts: Record<number, number> = {};
+  items.forEach(item => {
+    if (item.status !== "cancelled") {
+      toothCounts[item.toothNumber] = (toothCounts[item.toothNumber] || 0) + 1;
+    }
+  });
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
       <h3 className="text-base font-bold text-slate-700 mb-4">Odontograma de Planejamento</h3>
@@ -76,6 +94,7 @@ const PlanningOdontogram = ({ items, onToothClick }: PlanningOdontogramProps) =>
               key={n}
               toothNumber={n}
               status={deriveToothStatus(n, items)}
+              count={toothCounts[n] || 0}
               onClick={() => onToothClick(n)}
             />
           ))}
@@ -85,6 +104,7 @@ const PlanningOdontogram = ({ items, onToothClick }: PlanningOdontogramProps) =>
               key={n}
               toothNumber={n}
               status={deriveToothStatus(n, items)}
+              count={toothCounts[n] || 0}
               onClick={() => onToothClick(n)}
             />
           ))}
@@ -99,6 +119,7 @@ const PlanningOdontogram = ({ items, onToothClick }: PlanningOdontogramProps) =>
               key={n}
               toothNumber={n}
               status={deriveToothStatus(n, items)}
+              count={toothCounts[n] || 0}
               onClick={() => onToothClick(n)}
             />
           ))}
@@ -108,6 +129,7 @@ const PlanningOdontogram = ({ items, onToothClick }: PlanningOdontogramProps) =>
               key={n}
               toothNumber={n}
               status={deriveToothStatus(n, items)}
+              count={toothCounts[n] || 0}
               onClick={() => onToothClick(n)}
             />
           ))}
