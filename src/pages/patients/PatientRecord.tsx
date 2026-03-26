@@ -37,7 +37,6 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
   { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
   { key: "historico", label: "Histórico", icon: "history" },
   { key: "anamnese", label: "Anamnese", icon: "checklist" },
-  { key: "plano", label: "Plano de Tratamento", icon: "assignment" },
   { key: "arquivos", label: "Arquivos e Raio-X", icon: "photo_library" },
   { key: "anotacoes", label: "Anotações", icon: "edit_note" },
 ];
@@ -273,11 +272,6 @@ const PatientRecord = () => {
               )}
             </div>
           </div>
-        )}
-
-        {/* Tab Plano de Tratamento */}
-        {activeTab === "plano" && clinicId && id && (
-          <TreatmentPlan clinicId={clinicId} patientId={id} />
         )}
 
         {/* Placeholder para outras tabs */}

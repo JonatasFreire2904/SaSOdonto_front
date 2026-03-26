@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { treatmentPlanService } from "@/api/treatmentPlanService";
 import { planItemsKeys } from "@/hooks/queries/usePlanItems";
+import type { CompletePlanItemRequest } from "@/api/treatmentPlanService";
 
 interface UseCompletePlanItemContext {
   clinicId: string;
@@ -16,8 +17,8 @@ export const useCompletePlanItem = ({
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (itemId: string) =>
-      treatmentPlanService.completeItem(clinicId, patientId, planId, itemId),
+    mutationFn: ({ itemId, data }: { itemId: string; data: CompletePlanItemRequest }) =>
+      treatmentPlanService.completeItem(clinicId, patientId, planId, itemId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: planItemsKeys(clinicId, patientId, planId),

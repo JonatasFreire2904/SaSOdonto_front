@@ -17,6 +17,11 @@ export interface CreatePlanItemRequest {
   notes?: string | null;
 }
 
+export interface CompletePlanItemRequest {
+  completionComment?: string | null;
+  completedAt: string;
+}
+
 export interface TreatmentPlanMeta {
   id: string;
   [key: string]: unknown;
@@ -43,6 +48,14 @@ export interface UpdateTreatmentPlanRequest {
   date?: string;
   isCompleted?: boolean;
 }
+
+const extractPayload = <T>(raw: unknown): T => {
+  if (raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>)) {
+    return (raw as { data: T }).data;
+  }
+
+  return raw as T;
+};
 
 export const treatmentPlanService = {
   async list(clinicId: string, patientId: string): Promise<TreatmentPlanItem[]> {
@@ -97,21 +110,21 @@ export const treatmentPlanService = {
     const response = await api.get(
       `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento`
     );
-    return response.data;
+    return extractPayload<TreatmentPlanMeta>(response.data);
   },
 
   async createPlan(clinicId: string, patientId: string): Promise<TreatmentPlanMeta> {
     const response = await api.post(
       `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento`
     );
-    return response.data;
+    return extractPayload<TreatmentPlanMeta>(response.data);
   },
 
   async listItems(clinicId: string, patientId: string, planId: string): Promise<PlanItem[]> {
     const response = await api.get(
       `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/itens`
     );
-    return response.data.data;
+    return extractPayload<PlanItem[]>(response.data);
   },
 
   async createItem(
@@ -131,11 +144,12 @@ export const treatmentPlanService = {
     clinicId: string,
     patientId: string,
     planId: string,
-    itemId: string
+    itemId: string,
+    data: CompletePlanItemRequest
   ): Promise<void> {
     await api.patch(
       `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/itens/${itemId}/concluir`,
-      { completionComment: null }
+      data
     );
   },
 
