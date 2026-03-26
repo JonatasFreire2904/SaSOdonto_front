@@ -1,5 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useCreateProfessional } from "@/hooks/mutations/useCreateProfessional";
+import { formatCpf, normalizeCpf } from "@/utils/cpf";
+import { formatPhone, normalizePhone } from "@/utils/phone";
 
 interface CreateProfessionalModalProps {
   isOpen: boolean;
@@ -27,10 +29,14 @@ const CreateProfessionalModal = ({
 }: CreateProfessionalModalProps) => {
   const { create, isLoading, error, reset } = useCreateProfessional(clinicId);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [cpf, setCpf] = useState("");
+  const [phone, setPhone] = useState("");
 
   const handleClose = () => {
     reset();
     setPasswordError(null);
+    setCpf("");
+    setPhone("");
     onClose();
   };
 
@@ -54,7 +60,8 @@ const CreateProfessionalModal = ({
         email: String(form.get("email")).trim(),
         password,
         role: String(form.get("role")) as any,
-        phone: String(form.get("phone")).trim() || undefined,
+        cpf: normalizeCpf(cpf) || undefined,
+        phone: normalizePhone(phone) || undefined,
         clinicId,
       },
       {
@@ -123,6 +130,23 @@ const CreateProfessionalModal = ({
           </div>
 
           <div className="space-y-1">
+            <label htmlFor="cpf" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              CPF
+            </label>
+            <input
+              id="cpf"
+              name="cpf"
+              type="text"
+              inputMode="numeric"
+              maxLength={14}
+              value={cpf}
+              onChange={(event) => setCpf(formatCpf(event.target.value))}
+              placeholder="000.000.000-00"
+              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
+            />
+          </div>
+
+          <div className="space-y-1">
             <label htmlFor="phone" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               Telefone
             </label>
@@ -130,7 +154,10 @@ const CreateProfessionalModal = ({
               id="phone"
               name="phone"
               type="tel"
-              maxLength={20}
+              inputMode="numeric"
+              maxLength={15}
+              value={phone}
+              onChange={(event) => setPhone(formatPhone(event.target.value))}
               placeholder="(11) 99999-9999"
               className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
             />
