@@ -3,6 +3,8 @@ import { useUpdateProfessional } from "@/hooks/mutations/useUpdateProfessional";
 import { validatePassword } from "./CreateProfessionalModal";
 import { ROLE_OPTIONS } from "../utils";
 import type { Professional } from "@/api/professionalService";
+import { formatCpf, normalizeCpf } from "@/utils/cpf";
+import { formatPhone, normalizePhone } from "@/utils/phone";
 
 interface EditProfessionalModalProps {
   isOpen: boolean;
@@ -21,10 +23,14 @@ const EditProfessionalModal = ({
 }: EditProfessionalModalProps) => {
   const { update, isLoading, error, reset } = useUpdateProfessional(clinicId);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [cpf, setCpf] = useState(() => formatCpf(professional.cpf ?? ""));
+  const [phone, setPhone] = useState(() => formatPhone(professional.phone ?? ""));
 
   const handleClose = () => {
     reset();
     setPasswordError(null);
+    setCpf(formatCpf(professional.cpf ?? ""));
+    setPhone(formatPhone(professional.phone ?? ""));
     onClose();
   };
 
@@ -44,7 +50,6 @@ const EditProfessionalModal = ({
     }
     setPasswordError(null);
 
-    const phone = String(form.get("phone")).trim();
     const role = String(form.get("role")) as any;
 
     update(
@@ -53,7 +58,8 @@ const EditProfessionalModal = ({
         data: {
           userName: String(form.get("userName")).trim(),
           email: String(form.get("email")).trim(),
-          phone: phone || undefined,
+          cpf: normalizeCpf(cpf) || undefined,
+          phone: normalizePhone(phone) || undefined,
           role: role || undefined,
           ...(password ? { password } : {}),
         },
@@ -107,8 +113,33 @@ const EditProfessionalModal = ({
           </div>
 
           <div className="space-y-1">
+            <label htmlFor="edit-cpf" className="text-sm font-semibold text-slate-700 dark:text-slate-300">CPF</label>
+            <input
+              id="edit-cpf"
+              name="cpf"
+              type="text"
+              inputMode="numeric"
+              maxLength={14}
+              value={cpf}
+              onChange={(event) => setCpf(formatCpf(event.target.value))}
+              placeholder="000.000.000-00"
+              className={inputCls}
+            />
+          </div>
+
+          <div className="space-y-1">
             <label htmlFor="edit-phone" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Telefone</label>
-            <input id="edit-phone" name="phone" type="tel" maxLength={20} defaultValue={professional.phone ?? ""} placeholder="(11) 99999-9999" className={inputCls} />
+            <input
+              id="edit-phone"
+              name="phone"
+              type="tel"
+              inputMode="numeric"
+              maxLength={15}
+              value={phone}
+              onChange={(event) => setPhone(formatPhone(event.target.value))}
+              placeholder="(11) 99999-9999"
+              className={inputCls}
+            />
           </div>
 
           <div className="space-y-1">

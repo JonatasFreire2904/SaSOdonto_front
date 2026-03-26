@@ -10,7 +10,7 @@ import NextVisitCard from "./components/NextVisitCard";
 import AnamneseForm from "./components/AnamneseForm";
 import CreateAppointmentModal from "./components/CreateAppointmentModal";
 import ToothDetailModal from "./components/ToothDetailModal";
-import TreatmentPlan from "./components/TreatmentPlan";
+import TreatmentPlanOdontogram from "./components/TreatmentPlanOdontogram";
 import type { Atendimento } from "./components/ProceduresTable";
 import type { ProntuarioEntry } from "./components/MedicalAlerts";
 import type { ToothData } from "./components/Odontogram";
@@ -317,7 +317,7 @@ const PatientRecord = () => {
         )}
 
         {activeTab === "plano" && clinicId && id && (
-          <TreatmentPlan clinicId={clinicId} patientId={id} />
+          <TreatmentPlanOdontogram clinicId={clinicId} patientId={id} />
         )}
 
         {/* Footer */}

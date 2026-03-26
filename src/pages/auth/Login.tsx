@@ -1,12 +1,16 @@
 import { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import AuthLayout from "@/components/layout/AuthLayout";
 import InputField from "@/components/ui/InputField";
 import Button from "@/components/ui/Button";
 import { useLogin } from "@/hooks/useLogin";
+import { useAuth } from "@/context/AuthContext";
 
 const Login = () => {
   const { login, isLoading, error } = useLogin();
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

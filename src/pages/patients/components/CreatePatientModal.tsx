@@ -1,5 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useCreatePatient } from "@/hooks/mutations/useCreatePatient";
+import { formatCpf, normalizeCpf } from "@/utils/cpf";
+import { formatPhone, normalizePhone } from "@/utils/phone";
 
 interface CreatePatientModalProps {
   isOpen: boolean;
@@ -15,9 +17,13 @@ const CreatePatientModal = ({
   clinicId,
 }: CreatePatientModalProps) => {
   const { create, isLoading, error, reset } = useCreatePatient(clinicId);
+  const [cpf, setCpf] = useState("");
+  const [phone, setPhone] = useState("");
 
   const handleClose = () => {
     reset();
+    setCpf("");
+    setPhone("");
     onClose();
   };
 
@@ -30,10 +36,10 @@ const CreatePatientModal = ({
     create(
       {
         fullName: String(form.get("fullName")).trim(),
-        cpf: String(form.get("cpf")).trim() || undefined,
+        cpf: normalizeCpf(cpf) || undefined,
         birthDate: new Date(String(form.get("birthDate"))).toISOString(),
         gender: String(form.get("gender")),
-        phone: String(form.get("phone")).trim() || undefined,
+        phone: normalizePhone(phone) || undefined,
         email: String(form.get("email")).trim() || undefined,
         address: String(form.get("address")).trim() || undefined,
         notes: String(form.get("notes")).trim() || undefined,
@@ -96,6 +102,10 @@ const CreatePatientModal = ({
                 id="cpf"
                 name="cpf"
                 type="text"
+                inputMode="numeric"
+                maxLength={14}
+                value={cpf}
+                onChange={(event) => setCpf(formatCpf(event.target.value))}
                 placeholder="000.000.000-00"
                 className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
               />
@@ -136,6 +146,10 @@ const CreatePatientModal = ({
                 id="phone"
                 name="phone"
                 type="tel"
+                inputMode="numeric"
+                maxLength={15}
+                value={phone}
+                onChange={(event) => setPhone(formatPhone(event.target.value))}
                 placeholder="(00) 00000-0000"
                 className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
               />
