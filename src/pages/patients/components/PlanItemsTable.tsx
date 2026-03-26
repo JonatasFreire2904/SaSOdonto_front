@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PlanItem } from "@/api/treatmentPlanService";
 import { useCompletePlanItem } from "@/hooks/mutations/useCompletePlanItem";
 import { useCancelPlanItem } from "@/hooks/mutations/useCancelPlanItem";
@@ -52,12 +53,26 @@ const Spinner = () => (
   </svg>
 );
 
+const formatDateForInput = (value: string) => value.split("T")[0];
+
+const formatCompletedAt = (value: string | null) =>
+  value
+    ? new Date(value).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "—";
+
 const PlanItemRow = ({ item, clinicId, patientId, planId }: PlanItemRowProps) => {
   const { completeItem, isPending: isCompletePending, error: completeError } = useCompletePlanItem({
     clinicId,
     patientId,
     planId,
   });
+  const [completedAt, setCompletedAt] = useState(
+    item.completedAt ? formatDateForInput(item.completedAt) : formatDateForInput(new Date().toISOString())
+  );
 
   const { cancelItem, isPending: isCancelPending, error: cancelError } = useCancelPlanItem({
     clinicId,
@@ -83,10 +98,19 @@ const PlanItemRow = ({ item, clinicId, patientId, planId }: PlanItemRowProps) =>
           </span>
         </td>
         <td className="px-6 py-4 text-slate-500">{item.notes ?? "—"}</td>
+        <td className="px-6 py-4 text-slate-600 font-medium">{formatCompletedAt(item.completedAt)}</td>
         <td className="px-6 py-4">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => completeItem(item.id)}
+              onClick={() =>
+                completeItem({
+                  itemId: item.id,
+                  data: {
+                    completionComment: item.completionComment ?? null,
+                    completedAt: new Date(`${completedAt}T12:00:00`).toISOString(),
+                  },
+                })
+              }
               disabled={isCompleted || isCancelled || isCompletePending || isCancelPending}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
@@ -102,6 +126,19 @@ const PlanItemRow = ({ item, clinicId, patientId, planId }: PlanItemRowProps) =>
               Cancelar
             </button>
           </div>
+          {!isCompleted && (
+            <div className="mt-2">
+              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                Data de conclusão
+              </label>
+              <input
+                type="date"
+                value={completedAt}
+                onChange={(event) => setCompletedAt(event.target.value)}
+                className="mt-1 block w-full max-w-[180px] px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+          )}
           {rowError && (
             <p className="mt-1 text-xs text-red-600">
               {(rowError as Error).message ?? "Ocorreu um erro. Tente novamente."}
@@ -124,13 +161,14 @@ const PlanItemsTable = ({ items, clinicId, patientId, planId }: PlanItemsTablePr
               <th className="px-6 py-4">Procedimento</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Observações</th>
+              <th className="px-6 py-4">Concluído em</th>
               <th className="px-6 py-4">Ações</th>
             </tr>
           </thead>
           <tbody className="text-sm divide-y divide-slate-100">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-sm">
+                <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
                   Nenhum procedimento planejado
                 </td>
               </tr>
