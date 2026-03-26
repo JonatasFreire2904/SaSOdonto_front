@@ -1,8 +1,6 @@
 import { FormEvent, useState, useEffect, useMemo, useRef } from "react";
 import type { ToothData } from "./Odontogram";
-import { useProcedimentos } from "@/hooks/queries/useProcedimentos";
-import { useAddToothProcedure } from "@/hooks/mutations/useAddToothProcedure";
-import { useUpdateToothStatus } from "@/hooks/mutations/useUpdateToothStatus";
+import { useProcedimentos, useAddToothProcedure, useUpdateToothStatus } from "@/hooks/useOdontogram";
 import type { Procedimento } from "@/api/odontogramService";
 
 interface ToothDetailModalProps {
@@ -21,19 +19,6 @@ const FACES = [
   { key: "D", label: "Distal" },
   { key: "O", label: "Oclusal / Incisal" },
 ] as const;
-
-const ALL_FACE_KEYS = FACES.map((f) => f.key);
-
-// Detecta se o procedimento é cirurgia/exodontia
-const isSurgeryProcedure = (proc: Procedimento) => {
-  const name = proc.name.toLowerCase();
-  const cat = (proc.category || "").toLowerCase();
-  return (
-    cat.includes("cirurgia") ||
-    name.includes("exodontia") ||
-    name.includes("extração")
-  );
-};
 
 const ToothDetailModal = ({
   isOpen,
@@ -97,6 +82,19 @@ const ToothDetailModal = ({
   const toggleCategory = (cat: string) => {
     setExpandedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const ALL_FACE_KEYS = FACES.map((f) => f.key);
+
+  // Detecta se o procedimento é cirurgia/exodontia para auto-selecionar todas as faces
+  const isSurgeryProcedure = (proc: Procedimento) => {
+    const name = proc.name.toLowerCase();
+    const cat = (proc.category || "").toLowerCase();
+    return (
+      cat.includes("cirurgia") ||
+      name.includes("exodontia") ||
+      name.includes("extração")
     );
   };
 
@@ -212,15 +210,13 @@ const ToothDetailModal = ({
                 <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-64 overflow-y-auto">
                   {[...grouped.entries()].map(([category, procs]) => (
                     <div key={category}>
+                      {/* Categoria header */}
                       <button
                         type="button"
                         onClick={() => toggleCategory(category)}
                         className="flex items-center w-full px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary bg-slate-50 dark:bg-slate-800/50 hover:bg-primary/5 transition-colors sticky top-0"
                       >
-                        <span
-                          className="material-symbols-outlined text-sm mr-2 transition-transform"
-                          style={{ transform: expandedCategories.includes(category) ? "rotate(90deg)" : "rotate(0deg)" }}
-                        >
+                        <span className="material-symbols-outlined text-sm mr-2 transition-transform" style={{ transform: expandedCategories.includes(category) ? "rotate(90deg)" : "rotate(0deg)" }}>
                           chevron_right
                         </span>
                         {category}
@@ -229,6 +225,7 @@ const ToothDetailModal = ({
                         </span>
                       </button>
 
+                      {/* Procedimentos da categoria */}
                       {expandedCategories.includes(category) &&
                         procs.map((proc) => (
                           <button
