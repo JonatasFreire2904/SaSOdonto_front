@@ -4,7 +4,7 @@ export interface ProntuarioEntry {
   id: string;
   type: string;
   title: string;
-  description: string | null;
+  description?: string;
   createdAt: string;
 }
 

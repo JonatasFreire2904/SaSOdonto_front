@@ -55,7 +55,7 @@ const Spinner = () => (
 
 const formatDateForInput = (value: string) => value.split("T")[0];
 
-const formatCompletedAt = (value: string | null) =>
+const formatCompletedAt = (value?: string) =>
   value
     ? new Date(value).toLocaleDateString("pt-BR", {
         day: "2-digit",

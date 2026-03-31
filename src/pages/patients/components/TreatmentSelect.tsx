@@ -66,7 +66,7 @@ const TreatmentSelect = ({
         ) : (
           treatments.map((treatment) => (
             <option key={treatment.id} value={treatment.id}>
-              {treatment.procedureName} - {formatToothNumber(treatment.toothNumber)}
+              {treatment.procedureName} - {formatToothNumber(treatment.toothNumber ?? 0)}
               {treatment.status === "InProgress" ? " (Em andamento)" : ""}
             </option>
           ))

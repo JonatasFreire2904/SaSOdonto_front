@@ -68,12 +68,13 @@ export interface ListPatientsParams {
 /**
  * Normaliza resposta do backend para formato interno do frontend
  */
-function normalizePatient(p: Record<string, unknown>): Patient {
+function normalizePatient(p: Patient | Record<string, unknown>): Patient {
+  const raw = p as Record<string, unknown>;
   return {
     ...p,
     // Suporta tanto 'name' (novo) quanto 'fullName' (legado)
-    name: (p.name ?? p.fullName ?? "") as string,
-    fullName: (p.fullName ?? p.name ?? "") as string,
+    name: (raw.name ?? raw.fullName ?? "") as string,
+    fullName: (raw.fullName ?? raw.name ?? "") as string,
   } as Patient;
 }
 

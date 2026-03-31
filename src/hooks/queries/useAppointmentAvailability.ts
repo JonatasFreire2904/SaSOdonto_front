@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState, useCallback } from "react";
-import { atendimentoService, TimeSlot, AvailabilityResponse } from "@/api/atendimentoService";
+import { atendimentoService, AvailabilityResponse } from "@/api/atendimentoService";
 
 interface UseAppointmentAvailabilityOptions {
   professionalId?: string;
@@ -34,33 +34,6 @@ export const useAppointmentAvailability = (options: UseAppointmentAvailabilityOp
     staleTime: 1000 * 60 * 2, // 2 minutos
     refetchOnWindowFocus: true,
   });
-
-  // Slots separados por período
-  const groupedSlots = useMemo(() => {
-    const slots = availabilityQuery.data?.slots || [];
-    
-    const morning: TimeSlot[] = [];
-    const afternoon: TimeSlot[] = [];
-
-    slots.forEach((slot) => {
-      const hour = parseInt(slot.time.split(":")[0], 10);
-      if (hour < 12) {
-        morning.push(slot);
-      } else {
-        afternoon.push(slot);
-      }
-    });
-
-    return { morning, afternoon };
-  }, [availabilityQuery.data?.slots]);
-
-  // Contagem de slots
-  const slotStats = useMemo(() => {
-    const slots = availabilityQuery.data?.slots || [];
-    const available = slots.filter((s) => s.available).length;
-    const occupied = slots.filter((s) => !s.available).length;
-    return { available, occupied, total: slots.length };
-  }, [availabilityQuery.data?.slots]);
 
   // Validar se horário está disponível
   const isTimeAvailable = useCallback(
@@ -115,23 +88,17 @@ export const useAppointmentAvailability = (options: UseAppointmentAvailabilityOp
     // Handlers
     setSelectedDate: handleDateChange,
     setSelectedTime: handleTimeSelect,
+    setSelectedTimeForce: setSelectedTime,
     setProfessionalId: handleProfessionalChange,
     
     // Data
     slots: availabilityQuery.data?.slots || [],
-    groupedSlots,
-    slotStats,
     
     // Query state
     isLoading: availabilityQuery.isLoading,
-    isError: availabilityQuery.isError,
-    error: availabilityQuery.error,
-    refetch: availabilityQuery.refetch,
     
     // Validation
     isTimeAvailable,
     isSelectionValid,
   };
 };
-
-export type UseAppointmentAvailabilityReturn = ReturnType<typeof useAppointmentAvailability>;
