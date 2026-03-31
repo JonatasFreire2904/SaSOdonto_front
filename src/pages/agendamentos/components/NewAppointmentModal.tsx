@@ -3,14 +3,23 @@ import { atendimentoService } from "@/api/atendimentoService";
 import { useProfessionals } from "@/hooks/queries/useProfessionals";
 import { useAppointmentAvailability } from "@/hooks/queries/useAppointmentAvailability";
 import { usePatients, useDebounce } from "@/hooks/queries/usePatients";
+import type { Patient } from "@/api/patientService";
+import { getClinicId } from "@/utils/clinic";
 import Calendar from "@/components/ui/Calendar";
 import TimeSlotSelector from "@/components/ui/TimeSlotSelector";
+
+interface PreSelectedSchedule {
+  date: string;
+  time: string;
+  professionalId: string;
+}
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   initialDate?: string;
+  preSelectedSchedule?: PreSelectedSchedule | null;
 }
 
 type ModalStep = "patient" | "schedule" | "details";
@@ -18,13 +27,16 @@ type ModalStep = "patient" | "schedule" | "details";
 /**
  * Modal de novo agendamento para a página de Agendamentos
  * Fluxo: Selecionar Paciente → Selecionar Data/Hora → Detalhes
+ * Quando preSelectedSchedule é fornecido, pula o step "schedule"
  */
 const NewAppointmentModal = ({
   isOpen,
   onClose,
   onSuccess,
   initialDate,
+  preSelectedSchedule,
 }: NewAppointmentModalProps) => {
+  const hasPreSelected = !!preSelectedSchedule;
   const [step, setStep] = useState<ModalStep>("patient");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,20 +52,10 @@ const NewAppointmentModal = ({
   const [tooth, setTooth] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState(60);
 
-  // Get clinicId from localStorage
-  const clinicId = useMemo(() => {
-    try {
-      const stored = localStorage.getItem("selectedClinic");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed.id || parsed.clinicId || localStorage.getItem("selectedClinicId");
-      }
-      return localStorage.getItem("selectedClinicId") || "";
-    } catch {
-      return localStorage.getItem("selectedClinicId") || "";
-    }
-  }, []);
+  // Get clinicId from shared util
+  const clinicId = useMemo(getClinicId, []);
 
   // usePatients(clinicId, search, page, pageSize, status, enabled)
   const { data: patientsData, isLoading: isLoadingPatients } = usePatients(
@@ -64,7 +66,7 @@ const NewAppointmentModal = ({
     "Active",
     isOpen && step === "patient"
   );
-  const patients = patientsData?.items || [];
+  const patients = patientsData?.data || [];
 
   const { data: professionals = [] } = useProfessionals(clinicId);
   const activeProfessionals = useMemo(
@@ -79,6 +81,7 @@ const NewAppointmentModal = ({
     scheduledAt,
     setSelectedDate,
     setSelectedTime,
+    setSelectedTimeForce,
     setProfessionalId,
     slots,
     isLoading: isSlotsLoading,
@@ -105,16 +108,26 @@ const NewAppointmentModal = ({
       setTooth("");
       setPrice("");
       setDescription("");
+      setDurationMinutes(60);
       setError(null);
     }
   }, [isOpen]);
+
+  // Inicializar com dados pré-selecionados
+  useEffect(() => {
+    if (isOpen && preSelectedSchedule) {
+      setProfessionalId(preSelectedSchedule.professionalId);
+      setSelectedDate(preSelectedSchedule.date);
+      setSelectedTimeForce(preSelectedSchedule.time);
+    }
+  }, [isOpen, preSelectedSchedule, setProfessionalId, setSelectedDate, setSelectedTimeForce]);
 
   if (!isOpen) return null;
 
   const handlePatientSelect = (patient: { id: string; name: string }) => {
     setSelectedPatientId(patient.id);
     setSelectedPatientName(patient.name);
-    setStep("schedule");
+    setStep(hasPreSelected ? "details" : "schedule");
   };
 
   const handleContinueToDetails = () => {
@@ -130,7 +143,7 @@ const NewAppointmentModal = ({
     if (step === "schedule") {
       setStep("patient");
     } else if (step === "details") {
-      setStep("schedule");
+      setStep(hasPreSelected ? "patient" : "schedule");
     }
     setError(null);
   };
@@ -144,7 +157,12 @@ const NewAppointmentModal = ({
       return;
     }
 
-    if (!scheduledAt || !professionalId || !selectedPatientId) {
+    const effectiveScheduledAt = preSelectedSchedule
+      ? new Date(`${preSelectedSchedule.date}T${preSelectedSchedule.time}`).toISOString()
+      : scheduledAt;
+    const effectiveProfessionalId = preSelectedSchedule?.professionalId || professionalId;
+
+    if (!effectiveScheduledAt || !effectiveProfessionalId || !selectedPatientId) {
       setError("Data, horário, profissional e paciente são obrigatórios.");
       return;
     }
@@ -160,11 +178,12 @@ const NewAppointmentModal = ({
       await atendimentoService.create(clinicId, {
         procedure: procedure.trim(),
         description: description.trim() || undefined,
-        scheduledAt,
+        scheduledAt: effectiveScheduledAt,
         price: priceValue,
-        professionalId,
+        professionalId: effectiveProfessionalId,
         tooth: tooth.trim() || undefined,
         patientId: selectedPatientId,
+        durationMinutes,
       });
       onSuccess();
     } catch (err: unknown) {
@@ -180,6 +199,14 @@ const NewAppointmentModal = ({
   };
 
   const selectedProfessionalName = activeProfessionals.find(p => p.id === professionalId)?.userName;
+
+  const effectiveProfessionalName = preSelectedSchedule
+    ? activeProfessionals.find(p => p.id === preSelectedSchedule.professionalId)?.userName
+    : selectedProfessionalName;
+
+  const visibleSteps: ModalStep[] = hasPreSelected
+    ? ["patient", "details"]
+    : ["patient", "schedule", "details"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -207,8 +234,8 @@ const NewAppointmentModal = ({
           
           {/* Steps indicator */}
           <div className="flex items-center gap-2">
-            {["patient", "schedule", "details"].map((s, i) => {
-              const stepIndex = ["patient", "schedule", "details"].indexOf(step);
+            {visibleSteps.map((s, i) => {
+              const stepIndex = visibleSteps.indexOf(step as typeof visibleSteps[number]);
               const isCompleted = i < stepIndex;
               const isCurrent = s === step;
               
@@ -223,7 +250,7 @@ const NewAppointmentModal = ({
                       <span className="material-symbols-outlined text-lg">check</span>
                     ) : i + 1}
                   </div>
-                  {i < 2 && <div className="w-6 h-0.5 bg-slate-200 dark:bg-slate-700" />}
+                  {i < visibleSteps.length - 1 && <div className="w-6 h-0.5 bg-slate-200 dark:bg-slate-700" />}
                 </div>
               );
             })}
@@ -279,7 +306,7 @@ const NewAppointmentModal = ({
                     {patientSearch ? "Nenhum paciente encontrado" : "Digite para buscar pacientes"}
                   </div>
                 ) : (
-                  patients.map((patient) => (
+                  patients.map((patient: Patient) => (
                     <button
                       key={patient.id}
                       type="button"
@@ -377,7 +404,7 @@ const NewAppointmentModal = ({
                           weekday: "long", 
                           day: "numeric", 
                           month: "long" 
-                        })} às {selectedTime} • {selectedProfessionalName}
+                        })} às {selectedTime} • {effectiveProfessionalName}
                       </p>
                     </div>
                   </div>
@@ -399,12 +426,41 @@ const NewAppointmentModal = ({
                     {selectedPatientName}
                   </p>
                   <p className="text-sm text-slate-500">
-                    {new Date(selectedDate + "T00:00:00").toLocaleDateString("pt-BR", { 
+                    {new Date((preSelectedSchedule?.date || selectedDate) + "T00:00:00").toLocaleDateString("pt-BR", { 
                       weekday: "short", 
                       day: "numeric", 
                       month: "short" 
-                    })} às {selectedTime} • {selectedProfessionalName}
+                    })} às {preSelectedSchedule?.time || selectedTime} • {effectiveProfessionalName}
                   </p>
+                </div>
+              </div>
+
+              {/* Duração da consulta */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Duração da Consulta
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 30, label: "30 min" },
+                    { value: 45, label: "45 min" },
+                    { value: 60, label: "1 hora" },
+                    { value: 90, label: "1h 30min" },
+                    { value: 120, label: "2 horas" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setDurationMinutes(opt.value)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                        durationMinutes === opt.value
+                          ? "bg-primary text-white border-primary"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:border-primary"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 

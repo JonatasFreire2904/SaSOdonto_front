@@ -47,6 +47,7 @@ export interface CreateAtendimentoRequest {
   tooth?: string;
   patientId: string;
   treatmentItemId?: string;
+  durationMinutes?: number;
 }
 
 // Dashboard types

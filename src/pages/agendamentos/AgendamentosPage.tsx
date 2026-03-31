@@ -1,35 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDashboardAppointments } from "@/hooks/queries/useDashboardAppointments";
-import SummaryCards from "./components/SummaryCards";
-import AppointmentList from "./components/AppointmentList";
+import { useProfessionals } from "@/hooks/queries/useProfessionals";
+import { getClinicId } from "@/utils/clinic";
 import Calendar from "@/components/ui/Calendar";
 import NewAppointmentModal from "./components/NewAppointmentModal";
-import { useNavigate } from "react-router-dom";
+import DailyTimeline, { WORKING_SLOTS_COUNT } from "./components/DailyTimeline";
+import DailySummary from "./components/DailySummary";
+import ProfessionalSelector from "./components/ProfessionalSelector";
+import BottomActionBar from "./components/BottomActionBar";
+
+const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
+const formatDisplayDate = (dateStr: string) => {
+  const date = new Date(dateStr + "T00:00:00");
+  const day = date.getDate();
+  const month = capitalize(date.toLocaleDateString("pt-BR", { month: "long" }));
+  const year = date.getFullYear();
+  return `${day} de ${month}, ${year}`;
+};
+
+const getDayOfWeek = (dateStr: string) => {
+  const date = new Date(dateStr + "T00:00:00");
+  return capitalize(date.toLocaleDateString("pt-BR", { weekday: "long" }));
+};
 
 /**
- * Página de dashboard de agendamentos
- * Usa o endpoint /api/dashboard/agendamentos que obtém clinicId do JWT
+ * Página de Agenda Diária
+ * Planejamento clínico estruturado com timeline visual
  */
 const AgendamentosPage = () => {
   const navigate = useNavigate();
-  const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(
-    new Date().toISOString().split("T")[0]
+  const today = new Date().toISOString().split("T")[0];
+
+  // ─── Estado local ───
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalPreSelected, setModalPreSelected] = useState<{
+    date: string;
+    time: string;
+    professionalId: string;
+  } | null>(null);
+
+  // ─── Dados ───
+  const clinicId = useMemo(getClinicId, []);
+  const { data: professionals = [], isLoading: isLoadingProfessionals } = useProfessionals(clinicId);
+
+  const activeProfessionals = useMemo(
+    () => professionals.filter((p) => p.clinicId === clinicId),
+    [professionals, clinicId]
   );
-  
+
   const {
-    summary,
-    groupedAppointments,
+    appointments,
     isLoading,
     isError,
-    period,
     setPeriod,
-    customDateRange,
     setCustomDateRange,
-    statusFilter,
-    setStatusFilter,
-    searchTerm,
-    setSearchTerm,
+    setProfessionalFilter,
     confirm,
     cancel,
     complete,
@@ -39,24 +69,87 @@ const AgendamentosPage = () => {
     refetch,
   } = useDashboardAppointments();
 
-  const handleViewPatient = (patientId: string) => {
-    navigate(`/dashboard/pacientes/${patientId}`);
-  };
-
-  // Quando seleciona uma data no calendário, atualiza o filtro
-  const handleDateSelect = (date: string) => {
-    setSelectedCalendarDate(date);
-    // Muda para modo custom com a data selecionada
-    setCustomDateRange({ start: date, end: date });
+  // ─── Sincronizar filtros do hook com estado local ───
+  useEffect(() => {
+    setCustomDateRange({ start: selectedDate, end: selectedDate });
     setPeriod("custom");
-  };
+  }, [selectedDate, setCustomDateRange, setPeriod]);
 
-  // Callback quando cria um novo agendamento
-  const handleAppointmentCreated = () => {
-    setShowNewAppointmentModal(false);
+  useEffect(() => {
+    setProfessionalFilter(selectedProfessionalId || null);
+  }, [selectedProfessionalId, setProfessionalFilter]);
+
+  // ─── Cálculos derivados ───
+  const isAllProfessionals = !selectedProfessionalId;
+  const dayOfWeek = useMemo(() => getDayOfWeek(selectedDate), [selectedDate]);
+  const formattedDate = useMemo(() => formatDisplayDate(selectedDate), [selectedDate]);
+
+  const activeAppointments = useMemo(
+    () => appointments.filter((a) => a.status !== "Cancelled"),
+    [appointments]
+  );
+
+  const scheduledCount = activeAppointments.length;
+  const availableCount = isAllProfessionals
+    ? Math.max(0, WORKING_SLOTS_COUNT * activeProfessionals.length - scheduledCount)
+    : Math.max(0, WORKING_SLOTS_COUNT - scheduledCount);
+
+  // ─── Handlers ───
+  const handleDateSelect = useCallback((date: string) => {
+    setSelectedDate(date);
+    setSelectedTimeSlot(null);
+  }, []);
+
+  const handleProfessionalChange = useCallback((id: string) => {
+    setSelectedProfessionalId(id);
+    setSelectedTimeSlot(null);
+  }, []);
+
+  const handleTimeSelect = useCallback((time: string) => {
+    setSelectedTimeSlot((prev) => (prev === time ? null : time));
+  }, []);
+
+  const handleAdvanceToDetails = useCallback(() => {
+    if (!selectedTimeSlot) return;
+    if (selectedProfessionalId) {
+      // Profissional específico selecionado → pula step de schedule
+      setModalPreSelected({
+        date: selectedDate,
+        time: selectedTimeSlot,
+        professionalId: selectedProfessionalId,
+      });
+    } else {
+      // "Todos" → abre modal sem preSelectedSchedule para selecionar profissional no modal
+      setModalPreSelected(null);
+    }
+    setShowModal(true);
+  }, [selectedDate, selectedTimeSlot, selectedProfessionalId]);
+
+  const handleNewAppointment = useCallback(() => {
+    setModalPreSelected(null);
+    setShowModal(true);
+  }, []);
+
+  const handleModalSuccess = useCallback(() => {
+    setShowModal(false);
+    setModalPreSelected(null);
+    setSelectedTimeSlot(null);
     refetch();
-  };
+  }, [refetch]);
 
+  const handleModalClose = useCallback(() => {
+    setShowModal(false);
+    setModalPreSelected(null);
+  }, []);
+
+  const handleViewPatient = useCallback(
+    (patientId: string) => navigate(`/dashboard/pacientes/${patientId}`),
+    [navigate]
+  );
+
+  const handleClearSelection = useCallback(() => setSelectedTimeSlot(null), []);
+
+  // ─── Erro ───
   if (isError) {
     return (
       <div className="p-8 max-w-7xl mx-auto">
@@ -82,22 +175,42 @@ const AgendamentosPage = () => {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Agendamentos
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gerencie as consultas da clínica
-          </p>
+    <div className={`p-6 lg:p-8 max-w-7xl mx-auto space-y-6 ${selectedTimeSlot ? "pb-28" : ""}`}>
+      {/* ─── Header ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-6 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Agenda Diária
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Planejamento clínico estruturado para hoje.
+            </p>
+          </div>
+
+          <div className="h-10 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
+
+          <ProfessionalSelector
+            professionals={activeProfessionals}
+            selectedId={selectedProfessionalId}
+            onChange={handleProfessionalChange}
+            isLoading={isLoadingProfessionals}
+          />
+
+          <div className="h-10 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
+
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+            <span className="material-symbols-outlined text-lg text-slate-400">calendar_today</span>
+            <span className="text-sm font-medium">{formattedDate}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={() => refetch()}
             disabled={isLoading}
-            className="p-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
+            className="p-2.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
             title="Atualizar"
           >
             <span className={`material-symbols-outlined ${isLoading ? "animate-spin" : ""}`}>
@@ -105,8 +218,9 @@ const AgendamentosPage = () => {
             </span>
           </button>
           <button
-            onClick={() => setShowNewAppointmentModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
+            type="button"
+            onClick={handleNewAppointment}
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
           >
             <span className="material-symbols-outlined text-lg">add</span>
             Novo Agendamento
@@ -114,94 +228,56 @@ const AgendamentosPage = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <SummaryCards
-        summary={summary}
-        isLoading={isLoading}
-        activeFilter={statusFilter}
-        onFilterClick={setStatusFilter}
-      />
-
-      {/* Main Content: Calendar + Appointments */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendar Sidebar */}
-        <div className="lg:col-span-1">
+      {/* ─── Main Content ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Sidebar: Calendar + Summary */}
+        <div className="lg:col-span-4 xl:col-span-3 space-y-4">
           <Calendar
-            selectedDate={selectedCalendarDate}
+            selectedDate={selectedDate}
             onDateSelect={handleDateSelect}
           />
-          
-          {/* Quick Filters */}
-          <div className="mt-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-              Filtro Rápido
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setPeriod("today");
-                  setSelectedCalendarDate(new Date().toISOString().split("T")[0]);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  period === "today"
-                    ? "bg-primary text-white"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                }`}
-              >
-                Hoje
-              </button>
-              <button
-                onClick={() => setPeriod("week")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  period === "week"
-                    ? "bg-primary text-white"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                }`}
-              >
-                Esta Semana
-              </button>
-            </div>
-            
-            {/* Search */}
-            <div className="mt-4">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
-                  search
-                </span>
-                <input
-                  type="text"
-                  placeholder="Buscar paciente..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none"
-                />
-              </div>
-            </div>
-          </div>
+          <DailySummary
+            scheduledCount={scheduledCount}
+            availableCount={availableCount}
+            isLoading={isLoading}
+          />
         </div>
 
-        {/* Appointments List */}
-        <div className="lg:col-span-2">
-          <AppointmentList
-            groupedAppointments={groupedAppointments}
-            isLoading={isLoading}
+        {/* Timeline */}
+        <div className="lg:col-span-8 xl:col-span-9">
+          <DailyTimeline
+            appointments={activeAppointments}
+            selectedTime={selectedTimeSlot}
+            onTimeSelect={handleTimeSelect}
             onConfirm={confirm}
             onCancel={cancel}
             onComplete={complete}
             onViewPatient={handleViewPatient}
-            isConfirming={isConfirming}
-            isCancelling={isCancelling}
-            isCompleting={isCompleting}
+            isLoading={isLoading}
+            isActionPending={isConfirming || isCancelling || isCompleting}
+            dayOfWeek={dayOfWeek}
+            selectedDate={selectedDate}
+            showProfessionalName={isAllProfessionals}
+            professionalCount={isAllProfessionals ? activeProfessionals.length : 1}
           />
         </div>
       </div>
 
-      {/* New Appointment Modal */}
+      {/* ─── Bottom Action Bar ─── */}
+      <BottomActionBar
+        selectedDate={selectedDate}
+        selectedTime={selectedTimeSlot}
+        onAdvance={handleAdvanceToDetails}
+        onClear={handleClearSelection}
+      />
+
+      {/* ─── Modal ─── */}
       <NewAppointmentModal
-        isOpen={showNewAppointmentModal}
-        onClose={() => setShowNewAppointmentModal(false)}
-        onSuccess={handleAppointmentCreated}
-        initialDate={selectedCalendarDate}
+        isOpen={showModal}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
+        initialDate={selectedDate}
+        preSelectedSchedule={modalPreSelected}
       />
     </div>
   );

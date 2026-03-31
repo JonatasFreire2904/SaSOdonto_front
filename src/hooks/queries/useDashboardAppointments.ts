@@ -2,9 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { atendimentoService } from "@/api/atendimentoService";
-import type { DashboardFilters, DashboardResponse, DashboardAppointment } from "@/api/atendimentoService";
+import type { DashboardFilters, DashboardResponse } from "@/api/atendimentoService";
 
-export type PeriodType = "today" | "week" | "custom";
+type PeriodType = "today" | "week" | "custom";
 
 const getDateRange = (period: PeriodType, customStart?: string, customEnd?: string) => {
   const today = new Date();
@@ -35,14 +35,7 @@ const getDateRange = (period: PeriodType, customStart?: string, customEnd?: stri
   };
 };
 
-const statusValueMap: Record<string, number> = {
-  Scheduled: 0,
-  InProgress: 1,
-  Completed: 2,
-  Cancelled: 3,
-};
-
-export const dashboardKeys = (filters: DashboardFilters) => [
+const dashboardKeys = (filters: DashboardFilters) => [
   "dashboard-appointments",
   filters,
 ];
@@ -56,9 +49,7 @@ export const useDashboardAppointments = () => {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodType>("today");
   const [customDateRange, setCustomDateRange] = useState<{ start: string; end: string } | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [professionalFilter, setProfessionalFilter] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const filters = useMemo((): DashboardFilters => {
     const { startDate, endDate } = getDateRange(
@@ -69,10 +60,9 @@ export const useDashboardAppointments = () => {
     return {
       startDate,
       endDate,
-      status: statusFilter ? statusValueMap[statusFilter] : undefined,
       professionalId: professionalFilter || undefined,
     };
-  }, [period, customDateRange, statusFilter, professionalFilter]);
+  }, [period, customDateRange, professionalFilter]);
 
   const query = useQuery<DashboardResponse>({
     queryKey: dashboardKeys(filters),
@@ -93,41 +83,11 @@ export const useDashboardAppointments = () => {
     navigate("/clinicas");
   }
 
-  // Filter by search term (client-side)
+  // Filter appointments
   const filteredAppointments = useMemo(() => {
     if (!query.data?.appointments) return [];
-    if (!searchTerm.trim()) return query.data.appointments;
-    const term = searchTerm.toLowerCase();
-    return query.data.appointments.filter(
-      (apt) =>
-        apt.patientName.toLowerCase().includes(term) ||
-        apt.procedure.toLowerCase().includes(term)
-    );
-  }, [query.data?.appointments, searchTerm]);
-
-  // Group by period (morning/afternoon)
-  const groupedAppointments = useMemo(() => {
-    const morning: DashboardAppointment[] = [];
-    const afternoon: DashboardAppointment[] = [];
-
-    filteredAppointments.forEach((apt) => {
-      const hour = new Date(apt.scheduledAt).getHours();
-      if (hour < 12) {
-        morning.push(apt);
-      } else {
-        afternoon.push(apt);
-      }
-    });
-
-    // Sort by time
-    const sortByTime = (a: DashboardAppointment, b: DashboardAppointment) =>
-      new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-
-    return {
-      morning: morning.sort(sortByTime),
-      afternoon: afternoon.sort(sortByTime),
-    };
-  }, [filteredAppointments]);
+    return query.data.appointments;
+  }, [query.data?.appointments]);
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["dashboard-appointments"] });
@@ -151,27 +111,18 @@ export const useDashboardAppointments = () => {
 
   return {
     // Data
-    data: query.data,
     appointments: filteredAppointments,
-    groupedAppointments,
-    summary: query.data?.summary,
     
     // State
     isLoading: query.isLoading,
     isError: query.isError,
-    error: query.error,
     
     // Filters
     period,
     setPeriod,
     customDateRange,
     setCustomDateRange,
-    statusFilter,
-    setStatusFilter,
-    professionalFilter,
     setProfessionalFilter,
-    searchTerm,
-    setSearchTerm,
     
     // Actions
     confirm: confirmMutation.mutate,
