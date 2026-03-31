@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/api/authService";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useRegister = () => {
   const navigate = useNavigate();
@@ -13,12 +13,13 @@ export const useRegister = () => {
     },
   });
 
+  // Extrai mensagem de erro - prioriza mensagem do backend
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 409) return "Este e-mail já está cadastrado.";
-    if (err.response?.status === 400) return "Preencha todos os campos corretamente.";
-    return "Erro ao cadastrar. Tente novamente.";
+    return getApiError(mutation.error, {
+      409: "Este e-mail já está cadastrado.",
+      400: "Preencha todos os campos corretamente.",
+      default: "Erro ao cadastrar. Tente novamente.",
+    });
   };
 
   return {

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { professionalService } from "@/api/professionalService";
 import { professionalKeys } from "@/hooks/queries/useProfessionals";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useDeleteProfessional = (clinicId: string) => {
   const queryClient = useQueryClient();
@@ -13,12 +13,13 @@ export const useDeleteProfessional = (clinicId: string) => {
     },
   });
 
+  // Extrai mensagem de erro - prioriza mensagem do backend
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 400) return "Não foi possível remover o profissional.";
-    if (err.response?.status === 404) return "Profissional não encontrado.";
-    return "Erro inesperado. Tente novamente.";
+    return getApiError(mutation.error, {
+      400: "Não foi possível remover o profissional.",
+      404: "Profissional não encontrado.",
+      default: "Erro inesperado. Tente novamente.",
+    });
   };
 
   return {

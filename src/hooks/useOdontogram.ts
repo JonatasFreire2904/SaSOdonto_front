@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { odontogramService } from "@/api/odontogramService";
 import type { ToothProcedureRequest, UpdateToothStatusRequest } from "@/api/odontogramService";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useProcedimentos = (clinicId: string) => {
   return useQuery({
@@ -18,12 +18,13 @@ export const useAddToothProcedure = (clinicId: string, patientId: string) => {
       odontogramService.addToothProcedure(clinicId, patientId, data),
   });
 
+  // Extrai mensagem de erro - prioriza mensagem do backend
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 400) return "Preencha todos os campos corretamente.";
-    if (err.response?.status === 404) return "Procedimento ou dente não encontrado.";
-    return "Erro ao salvar procedimento. Tente novamente.";
+    return getApiError(mutation.error, {
+      400: "Preencha todos os campos corretamente.",
+      404: "Procedimento ou dente não encontrado.",
+      default: "Erro ao salvar procedimento. Tente novamente.",
+    });
   };
 
   return {

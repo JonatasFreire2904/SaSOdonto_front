@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/api/authService";
 import { useAuth } from "@/context/AuthContext";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useLogin = () => {
   const { login: authLogin } = useAuth();
@@ -16,13 +16,13 @@ export const useLogin = () => {
     },
   });
 
-  // Extrai mensagem de erro amigável
+  // Extrai mensagem de erro amigável - prioriza mensagem do backend
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 401) return "E-mail ou senha inválidos.";
-    if (err.response?.status === 400) return "Preencha todos os campos.";
-    return "Erro ao conectar. Tente novamente.";
+    return getApiError(mutation.error, {
+      401: "E-mail ou senha inválidos.",
+      400: "Preencha todos os campos.",
+      default: "Erro ao conectar. Tente novamente.",
+    });
   };
 
   return {

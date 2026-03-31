@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { patientService } from "@/api/patientService";
 import type { CreatePatientRequest } from "@/api/patientService";
 import { patientKeys } from "@/hooks/queries/usePatients";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useCreatePatient = (clinicId: string) => {
   const queryClient = useQueryClient();
@@ -15,12 +15,13 @@ export const useCreatePatient = (clinicId: string) => {
     },
   });
 
+  // Extrai mensagem de erro - prioriza mensagem do backend
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 400) return "Preencha todos os campos obrigatórios.";
-    if (err.response?.status === 409) return "CPF já cadastrado.";
-    return "Erro ao cadastrar paciente. Tente novamente.";
+    return getApiError(mutation.error, {
+      400: "Preencha todos os campos obrigatórios.",
+      409: "CPF já cadastrado.",
+      default: "Erro ao cadastrar paciente. Tente novamente.",
+    });
   };
 
   return {

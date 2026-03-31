@@ -19,7 +19,8 @@ import type { AnamneseSnapshot } from "./components/MedicalAlerts";
 
 interface Patient {
   id: string;
-  fullName: string;
+  name?: string;        // Novo formato do backend
+  fullName?: string;    // Formato legado - mantido para compatibilidade
   cpf: string;
   birthDate: string;
   gender: string;

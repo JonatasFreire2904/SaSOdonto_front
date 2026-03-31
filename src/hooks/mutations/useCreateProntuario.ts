@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { prontuarioService } from "@/api/prontuarioService";
 import type { CreateProntuarioRequest } from "@/api/prontuarioService";
 import { prontuarioKeys } from "@/hooks/queries/useProntuario";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useCreateProntuario = (clinicId: string, patientId: string) => {
   const queryClient = useQueryClient();
@@ -16,15 +16,15 @@ export const useCreateProntuario = (clinicId: string, patientId: string) => {
   });
 
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 400) return "Preencha todos os campos obrigatórios.";
-    return "Erro ao criar registro. Tente novamente.";
+    return getApiError(mutation.error, {
+      400: "Preencha todos os campos obrigatórios.",
+      default: "Erro ao criar registro. Tente novamente.",
+    });
   };
 
   return {
     create: mutation.mutate,
-    isLoading: mutation.isPending,
+    isPending: mutation.isPending,
     error: getError(),
     reset: mutation.reset,
   };

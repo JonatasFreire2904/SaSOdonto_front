@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+import { extractErrorMessage, type ApiError } from "@/api.types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5143/api",
@@ -17,9 +18,10 @@ api.interceptors.request.use((config) => {
 });
 
 // Interceptor: redireciona para login se receber 401 (exceto rotas de auth)
+// e padroniza extração de mensagens de erro
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError<ApiError>) => {
     const url = error.config?.url || "";
     const isAuthRoute = url.includes("/auth/");
 
@@ -27,7 +29,14 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
-    return Promise.reject(error);
+
+    // Enriquece o erro com mensagem extraída no formato padronizado
+    const enrichedError = {
+      ...error,
+      message: extractErrorMessage(error, error.message),
+    };
+
+    return Promise.reject(enrichedError);
   }
 );
 

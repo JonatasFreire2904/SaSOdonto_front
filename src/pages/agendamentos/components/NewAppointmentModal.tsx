@@ -1,42 +1,70 @@
 import { FormEvent, useState, useEffect, useMemo } from "react";
 import { atendimentoService } from "@/api/atendimentoService";
-import type { Atendimento } from "@/api/atendimentoService";
 import { useProfessionals } from "@/hooks/queries/useProfessionals";
 import { useAppointmentAvailability } from "@/hooks/queries/useAppointmentAvailability";
-import TreatmentSelect from "./TreatmentSelect";
-import type { PendingTreatmentItem } from "@/api/treatmentPlanService";
-import { formatToothNumber } from "@/api/treatmentPlanService";
+import { usePatients, useDebounce } from "@/hooks/queries/usePatients";
 import Calendar from "@/components/ui/Calendar";
 import TimeSlotSelector from "@/components/ui/TimeSlotSelector";
 
-interface CreateAppointmentModalProps {
+interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (atendimento: Atendimento) => void;
-  patientId: string;
-  patientName: string;
-  clinicId: string;
+  onSuccess: () => void;
+  initialDate?: string;
 }
 
-type ModalStep = "schedule" | "details";
+type ModalStep = "patient" | "schedule" | "details";
 
-const CreateAppointmentModal = ({
+/**
+ * Modal de novo agendamento para a página de Agendamentos
+ * Fluxo: Selecionar Paciente → Selecionar Data/Hora → Detalhes
+ */
+const NewAppointmentModal = ({
   isOpen,
   onClose,
   onSuccess,
-  patientId,
-  patientName,
-  clinicId,
-}: CreateAppointmentModalProps) => {
-  const [step, setStep] = useState<ModalStep>("schedule");
+  initialDate,
+}: NewAppointmentModalProps) => {
+  const [step, setStep] = useState<ModalStep>("patient");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTreatmentId, setSelectedTreatmentId] = useState("");
-  const [selectedTreatment, setSelectedTreatment] = useState<PendingTreatmentItem | null>(null);
-  const [manualProcedure, setManualProcedure] = useState("");
-  const [manualTooth, setManualTooth] = useState("");
+  
+  // Patient selection
+  const [patientSearch, setPatientSearch] = useState("");
+  const debouncedSearch = useDebounce(patientSearch, 300);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [selectedPatientName, setSelectedPatientName] = useState<string>("");
+  
+  // Appointment details
+  const [procedure, setProcedure] = useState("");
+  const [tooth, setTooth] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+
+  // Get clinicId from localStorage
+  const clinicId = useMemo(() => {
+    try {
+      const stored = localStorage.getItem("selectedClinic");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.id || parsed.clinicId || localStorage.getItem("selectedClinicId");
+      }
+      return localStorage.getItem("selectedClinicId") || "";
+    } catch {
+      return localStorage.getItem("selectedClinicId") || "";
+    }
+  }, []);
+
+  // usePatients(clinicId, search, page, pageSize, status, enabled)
+  const { data: patientsData, isLoading: isLoadingPatients } = usePatients(
+    clinicId,
+    debouncedSearch,
+    1,
+    10,
+    "Active",
+    isOpen && step === "patient"
+  );
+  const patients = patientsData?.items || [];
 
   const { data: professionals = [] } = useProfessionals(clinicId);
   const activeProfessionals = useMemo(
@@ -55,7 +83,9 @@ const CreateAppointmentModal = ({
     slots,
     isLoading: isSlotsLoading,
     isSelectionValid,
-  } = useAppointmentAvailability();
+  } = useAppointmentAvailability({
+    initialDate: initialDate || new Date().toISOString().split("T")[0],
+  });
 
   // Seleciona primeiro profissional disponível ao carregar
   useEffect(() => {
@@ -67,27 +97,27 @@ const CreateAppointmentModal = ({
   // Reset form quando modal fecha
   useEffect(() => {
     if (!isOpen) {
-      setStep("schedule");
-      setSelectedTreatmentId("");
-      setSelectedTreatment(null);
-      setManualProcedure("");
-      setManualTooth("");
+      setStep("patient");
+      setPatientSearch("");
+      setSelectedPatientId(null);
+      setSelectedPatientName("");
+      setProcedure("");
+      setTooth("");
       setPrice("");
       setDescription("");
       setError(null);
     }
   }, [isOpen]);
 
-  const handleTreatmentChange = (treatmentId: string, treatment: PendingTreatmentItem | null) => {
-    setSelectedTreatmentId(treatmentId);
-    setSelectedTreatment(treatment);
-    if (treatment) {
-      setManualProcedure("");
-      setManualTooth("");
-    }
+  if (!isOpen) return null;
+
+  const handlePatientSelect = (patient: { id: string; name: string }) => {
+    setSelectedPatientId(patient.id);
+    setSelectedPatientName(patient.name);
+    setStep("schedule");
   };
 
-  const handleContinue = () => {
+  const handleContinueToDetails = () => {
     if (!isSelectionValid) {
       setError("Selecione uma data, horário e profissional.");
       return;
@@ -97,32 +127,25 @@ const CreateAppointmentModal = ({
   };
 
   const handleBack = () => {
-    setStep("schedule");
+    if (step === "schedule") {
+      setStep("patient");
+    } else if (step === "details") {
+      setStep("schedule");
+    }
     setError(null);
   };
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    const procedure = selectedTreatment
-      ? selectedTreatment.procedureName
-      : manualProcedure.trim();
-    
-    const toothNum = selectedTreatment?.toothNumber;
-    const tooth = selectedTreatment
-      ? (toothNum === 0 || toothNum === undefined ? undefined : String(toothNum))
-      : manualTooth.trim() || undefined;
-
-    if (!procedure) {
+    if (!procedure.trim()) {
       setError("Procedimento é obrigatório.");
       return;
     }
 
-    if (!scheduledAt || !professionalId) {
-      setError("Data, horário e profissional são obrigatórios.");
+    if (!scheduledAt || !professionalId || !selectedPatientId) {
+      setError("Data, horário, profissional e paciente são obrigatórios.");
       return;
     }
 
@@ -134,22 +157,20 @@ const CreateAppointmentModal = ({
 
     setIsSubmitting(true);
     try {
-      const result = await atendimentoService.create(clinicId, {
-        procedure,
+      await atendimentoService.create(clinicId, {
+        procedure: procedure.trim(),
         description: description.trim() || undefined,
         scheduledAt,
         price: priceValue,
         professionalId,
-        tooth,
-        patientId,
-        treatmentItemId: selectedTreatmentId || undefined,
+        tooth: tooth.trim() || undefined,
+        patientId: selectedPatientId,
       });
-      onSuccess(result);
-      onClose();
+      onSuccess();
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 400) setError("Profissional inválido para atendimentos.");
-      else if (status === 403) setError("Profissional não pertence a esta clínica.");
+      if (status === 400) setError("Dados inválidos.");
+      else if (status === 403) setError("Sem permissão para esta operação.");
       else if (status === 404) setError("Paciente ou profissional não encontrado.");
       else if (status === 409) setError("Horário já está ocupado. Escolha outro horário.");
       else setError("Erro ao criar agendamento.");
@@ -176,33 +197,36 @@ const CreateAppointmentModal = ({
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Nova Consulta
+                Novo Agendamento
               </h3>
-              <p className="text-sm text-slate-500">{patientName}</p>
+              <p className="text-sm text-slate-500">
+                {selectedPatientName || "Selecione um paciente"}
+              </p>
             </div>
           </div>
           
           {/* Steps indicator */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step === "schedule" ? "bg-primary text-white" : "bg-emerald-500 text-white"}`}>
-                {step === "details" ? (
-                  <span className="material-symbols-outlined text-lg">check</span>
-                ) : "1"}
-              </div>
-              <span className={`text-sm font-medium ${step === "schedule" ? "text-slate-900 dark:text-white" : "text-slate-500"}`}>
-                Agenda
-              </span>
-            </div>
-            <div className="w-8 h-0.5 bg-slate-200 dark:bg-slate-700" />
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step === "details" ? "bg-primary text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
-                2
-              </div>
-              <span className={`text-sm font-medium ${step === "details" ? "text-slate-900 dark:text-white" : "text-slate-500"}`}>
-                Detalhes
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            {["patient", "schedule", "details"].map((s, i) => {
+              const stepIndex = ["patient", "schedule", "details"].indexOf(step);
+              const isCompleted = i < stepIndex;
+              const isCurrent = s === step;
+              
+              return (
+                <div key={s} className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    isCompleted ? "bg-emerald-500 text-white" :
+                    isCurrent ? "bg-primary text-white" :
+                    "bg-slate-200 dark:bg-slate-700 text-slate-500"
+                  }`}>
+                    {isCompleted ? (
+                      <span className="material-symbols-outlined text-lg">check</span>
+                    ) : i + 1}
+                  </div>
+                  {i < 2 && <div className="w-6 h-0.5 bg-slate-200 dark:bg-slate-700" />}
+                </div>
+              );
+            })}
           </div>
 
           <button
@@ -222,8 +246,69 @@ const CreateAppointmentModal = ({
             </div>
           )}
 
-          {step === "schedule" ? (
-            /* Step 1: Calendar and Time Selection */
+          {step === "patient" && (
+            /* Step 1: Patient Selection */
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
+                  Buscar Paciente
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome ou CPF do paciente..."
+                    value={patientSearch}
+                    onChange={(e) => setPatientSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Patient List */}
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {isLoadingPatients ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : patients.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    {patientSearch ? "Nenhum paciente encontrado" : "Digite para buscar pacientes"}
+                  </div>
+                ) : (
+                  patients.map((patient) => (
+                    <button
+                      key={patient.id}
+                      type="button"
+                      onClick={() => handlePatientSelect({ id: patient.id, name: patient.name })}
+                      className="w-full flex items-center gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-primary hover:bg-primary/5 transition-all text-left"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                        {patient.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900 dark:text-white">
+                          {patient.name}
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          {patient.cpf || patient.email || "Sem informações adicionais"}
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-slate-400">
+                        chevron_right
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === "schedule" && (
+            /* Step 2: Calendar and Time Selection */
             <div className="p-6 space-y-6">
               {/* Professional Selector */}
               <div className="space-y-2">
@@ -299,104 +384,54 @@ const CreateAppointmentModal = ({
                 </div>
               )}
             </div>
-          ) : (
-            /* Step 2: Appointment Details */
+          )}
+
+          {step === "details" && (
+            /* Step 3: Appointment Details */
             <form id="appointment-form" onSubmit={handleSubmit} className="p-6 space-y-5">
-              {/* Resumo do agendamento */}
+              {/* Summary */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center gap-4">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined text-2xl">event</span>
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                  {selectedPatientName.charAt(0).toUpperCase()}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-slate-900 dark:text-white">
+                    {selectedPatientName}
+                  </p>
+                  <p className="text-sm text-slate-500">
                     {new Date(selectedDate + "T00:00:00").toLocaleDateString("pt-BR", { 
                       weekday: "short", 
                       day: "numeric", 
                       month: "short" 
-                    })} às {selectedTime}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    Com {selectedProfessionalName}
+                    })} às {selectedTime} • {selectedProfessionalName}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="ml-auto text-primary hover:underline text-sm font-medium"
-                >
-                  Alterar
-                </button>
-              </div>
-
-              {/* Vincular Tratamento do Plano */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  <span className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-lg">assignment</span>
-                    Vincular ao Plano de Tratamento
-                  </span>
-                </label>
-                <TreatmentSelect
-                  clinicId={clinicId}
-                  patientId={patientId}
-                  value={selectedTreatmentId}
-                  onChange={handleTreatmentChange}
-                />
-                {selectedTreatment && (
-                  <div className="mt-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                    <div className="flex items-start gap-2">
-                      <span className="material-symbols-outlined text-emerald-600 text-lg mt-0.5">check_circle</span>
-                      <div className="text-sm">
-                        <p className="font-medium text-emerald-700 dark:text-emerald-400">
-                          {selectedTreatment.procedureName}
-                        </p>
-                        <p className="text-emerald-600/80 dark:text-emerald-400/80">
-                          {formatToothNumber(selectedTreatment.toothNumber ?? 0)}
-                          {selectedTreatment.treatmentPlan?.name && ` • Plano: ${selectedTreatment.treatmentPlan.name}`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Divisor */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <span className="text-xs text-slate-400 uppercase tracking-wide">
-                  {selectedTreatment ? "Dados preenchidos do plano" : "ou digite manualmente"}
-                </span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
 
               {/* Procedimento e Dente */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-procedure">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="new-procedure">
                     Procedimento *
                   </label>
                   <input
-                    id="appt-procedure"
-                    required={!selectedTreatment}
-                    disabled={!!selectedTreatment}
-                    value={selectedTreatment ? selectedTreatment.procedureName : manualProcedure}
-                    onChange={(e) => setManualProcedure(e.target.value)}
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all ${selectedTreatment ? "opacity-60 cursor-not-allowed" : ""}`}
+                    id="new-procedure"
+                    required
+                    value={procedure}
+                    onChange={(e) => setProcedure(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none"
                     placeholder="Ex: Profilaxia, Restauração..."
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-tooth">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="new-tooth">
                     Dente
                   </label>
                   <input
-                    id="appt-tooth"
-                    disabled={!!selectedTreatment}
-                    value={selectedTreatment 
-                      ? ((selectedTreatment.toothNumber ?? 0) === 0 ? "Geral" : String(selectedTreatment.toothNumber)) 
-                      : manualTooth}
-                    onChange={(e) => setManualTooth(e.target.value)}
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all ${selectedTreatment ? "opacity-60 cursor-not-allowed" : ""}`}
+                    id="new-tooth"
+                    value={tooth}
+                    onChange={(e) => setTooth(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none"
                     placeholder="Ex: 18, 36..."
                   />
                 </div>
@@ -404,7 +439,7 @@ const CreateAppointmentModal = ({
 
               {/* Valor */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-price">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="new-price">
                   Valor (R$)
                 </label>
                 <div className="relative">
@@ -412,13 +447,13 @@ const CreateAppointmentModal = ({
                     <span className="material-symbols-outlined text-slate-400 text-xl">payments</span>
                   </div>
                   <input
-                    id="appt-price"
+                    id="new-price"
                     type="number"
                     min="0"
                     step="0.01"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none"
                     placeholder="0,00"
                   />
                 </div>
@@ -426,15 +461,15 @@ const CreateAppointmentModal = ({
 
               {/* Descrição */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="appt-desc">
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300" htmlFor="new-desc">
                   Observações
                 </label>
                 <textarea
-                  id="appt-desc"
+                  id="new-desc"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none resize-none"
                   placeholder="Observações sobre o atendimento..."
                 />
               </div>
@@ -445,18 +480,27 @@ const CreateAppointmentModal = ({
         {/* Footer with buttons */}
         <div className="p-6 border-t border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex gap-3">
-            {step === "schedule" ? (
+            {step === "patient" ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancelar
+              </button>
+            ) : step === "schedule" ? (
               <>
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="flex-1 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  onClick={handleBack}
+                  className="flex-1 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
                 >
-                  Cancelar
+                  <span className="material-symbols-outlined text-lg">arrow_back</span>
+                  Voltar
                 </button>
                 <button
                   type="button"
-                  onClick={handleContinue}
+                  onClick={handleContinueToDetails}
                   disabled={!isSelectionValid}
                   className="flex-1 py-3 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                 >
@@ -501,4 +545,4 @@ const CreateAppointmentModal = ({
   );
 };
 
-export default CreateAppointmentModal;
+export default NewAppointmentModal;

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { useCreatePlanItemNew } from "@/hooks/mutations/useCreatePlanItemNew";
 
 interface AddPlanItemModalProps {
@@ -14,7 +14,7 @@ const COMMON_PROCEDURES = [
   { name: "Restauração", price: 200 },
   { name: "Canal", price: 800 },
   { name: "Extração", price: 150 },
-  { name: "Limpeza", price: 120 },
+  { name: "Profilaxia", price: 120 },
   { name: "Clareamento", price: 600 },
   { name: "Coroa", price: 1200 },
 ];
@@ -33,6 +33,14 @@ const AddPlanItemModal = ({
   const [notes, setNotes] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+
+  // Sincroniza o estado quando o dente pré-selecionado muda (ex: ao abrir modal para outro dente)
+  useEffect(() => {
+    if (isOpen) {
+      setToothNumber(preselectedTooth?.toString() || "");
+      setIsGeneral(preselectedTooth === null);
+    }
+  }, [isOpen, preselectedTooth]);
 
   const { createItem, isPending, reset } = useCreatePlanItemNew({
     clinicId,
@@ -82,7 +90,7 @@ const AddPlanItemModal = ({
 
     createItem(
       {
-        toothNumber: finalToothNumber!,
+        toothNumber: finalToothNumber ?? 0,  // 0 para procedimento geral
         procedureName: procedureName.trim(),
         notes: notes.trim() || null,
       },

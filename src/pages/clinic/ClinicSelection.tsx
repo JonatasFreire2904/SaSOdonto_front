@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import ClinicCard from "@/components/ui/ClinicCard";
 import CreateClinicModal from "@/components/ui/CreateClinicModal";
 import api from "@/api/axiosConfig";
+import { extractErrorMessage } from "@/api.types";
 
 // Tipo para representar os dados de uma clínica
 export interface Clinic {
@@ -41,11 +42,30 @@ const ClinicSelection = () => {
     fetchClinics();
   }, []);
 
-  const handleSelectClinic = (clinicId: string) => {
-    // chamar rota selecionar clínica ativa (POST /clinicas/:id/selecionar)
-    // Após selecionar, salvar a clínica no contexto/localStorage e redirecionar
-    localStorage.setItem("selectedClinicId", clinicId);
-    navigate("/dashboard");
+  const handleSelectClinic = async (clinicId: string) => {
+    try {
+      // Chama endpoint de seleção que retorna novo token JWT
+      const response = await api.post(`/clinicas/${clinicId}/selecionar`);
+      
+      // IMPORTANTE: Substitui o token atual pelo novo (com clinic_id no claim)
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+      }
+      
+      // Salva dados da clínica selecionada
+      localStorage.setItem("selectedClinic", JSON.stringify({
+        id: response.data.id,
+        name: response.data.name,
+        location: response.data.location,
+      }));
+      
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Erro ao selecionar clínica:", error);
+      // Se falhar, tenta o fluxo antigo (compatibilidade)
+      localStorage.setItem("selectedClinicId", clinicId);
+      navigate("/dashboard");
+    }
   };
 
   const handleCreateClinic = async (data: { name: string; location: string; imageUrl?: string }) => {
@@ -56,8 +76,9 @@ const ClinicSelection = () => {
       const response = await api.post("/clinicas", data);
       setClinics((prev) => [...prev, response.data]);
       setIsModalOpen(false);
-    } catch {
-      setCreateError("Erro ao criar clínica. Tente novamente.");
+    } catch (error) {
+      // Usa mensagem do backend se disponível
+      setCreateError(extractErrorMessage(error, "Erro ao criar clínica. Tente novamente."));
     } finally {
       setIsCreating(false);
     }

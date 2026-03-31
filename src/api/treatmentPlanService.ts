@@ -12,7 +12,7 @@ export interface PlanItem {
 }
 
 export interface CreatePlanItemRequest {
-  toothNumber: number;
+  toothNumber?: number | null;  // Opcional para procedimentos gerais
   procedureName: string;
   notes?: string | null;
 }
@@ -48,6 +48,31 @@ export interface UpdateTreatmentPlanRequest {
   date?: string;
   isCompleted?: boolean;
 }
+
+/**
+ * Resposta do endpoint de tratamentos pendentes
+ * GET /api/clinicas/{clinicId}/pacientes/{patientId}/tratamentos-pendentes
+ */
+export interface PendingTreatmentItem {
+  id: string;
+  toothNumber?: number;           // 0 = procedimento geral, pode ser undefined
+  procedureName: string;
+  status: "Planned" | "InProgress" | string;
+  notes?: string | null;
+  createdAt?: string;
+  treatmentPlan?: {
+    id: string;
+    name: string;
+    createdAt?: string;
+  };
+}
+
+/**
+ * Helper para formatar número do dente
+ */
+export const formatToothNumber = (toothNumber: number): string => {
+  return toothNumber === 0 ? "Geral" : `Dente ${toothNumber}`;
+};
 
 const extractPayload = <T>(raw: unknown): T => {
   if (raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>)) {
@@ -162,5 +187,27 @@ export const treatmentPlanService = {
     await api.patch(
       `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/itens/${itemId}/cancelar`
     );
+  },
+
+  /**
+   * Lista tratamentos pendentes do paciente (Planned e InProgress)
+   * GET /api/clinicas/{clinicId}/pacientes/{patientId}/tratamentos-pendentes
+   */
+  async listPendingTreatments(
+    clinicId: string,
+    patientId: string
+  ): Promise<PendingTreatmentItem[]> {
+    const response = await api.get(
+      `/clinicas/${clinicId}/pacientes/${patientId}/tratamentos-pendentes`
+    );
+    // Normaliza resposta - pode vir como array direto ou { items: [], data: [] }
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && typeof data === "object") {
+      return data.items ?? data.data ?? [];
+    }
+    return [];
   },
 };

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { mediaService } from "@/api/mediaService";
 import { mediaKeys } from "@/hooks/queries/useMedias";
-import { AxiosError } from "axios";
+import { getApiError } from "@/hooks/useApiError";
 
 export const useUploadMedia = (clinicId: string, patientId: string) => {
   const queryClient = useQueryClient();
@@ -14,11 +14,12 @@ export const useUploadMedia = (clinicId: string, patientId: string) => {
     },
   });
 
+  // Extrai mensagem de erro - prioriza mensagem do backend
   const getError = (): string | null => {
-    if (!mutation.error) return null;
-    const err = mutation.error as AxiosError<{ message?: string }>;
-    if (err.response?.status === 413) return "Arquivo muito grande.";
-    return "Erro ao enviar arquivo. Tente novamente.";
+    return getApiError(mutation.error, {
+      413: "Arquivo muito grande.",
+      default: "Erro ao enviar arquivo. Tente novamente.",
+    });
   };
 
   return {

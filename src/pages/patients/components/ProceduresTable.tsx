@@ -1,3 +1,5 @@
+import { getStatusInfo } from "@/api.types";
+
 export interface Atendimento {
   id: string;
   procedure: string;
@@ -5,7 +7,7 @@ export interface Atendimento {
   notes: string | null;
   scheduledAt: string;
   completedAt: string | null;
-  status: "Scheduled" | "Completed" | "Cancelled";
+  status: string; // Aceita qualquer status retornado pelo backend
   price: number;
   professionalId: string | null;
   professionalName: string | null;
@@ -20,12 +22,6 @@ interface ProceduresTableProps {
   totalCount: number;
   onViewAll: () => void;
 }
-
-const statusMap: Record<Atendimento["status"], { label: string; className: string }> = {
-  Scheduled: { label: "Agendado", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  Completed: { label: "Concluído", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  Cancelled: { label: "Cancelado", className: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
-};
 
 const ProceduresTable = ({ atendimentos, totalCount, onViewAll }: ProceduresTableProps) => {
   return (
@@ -55,7 +51,7 @@ const ProceduresTable = ({ atendimentos, totalCount, onViewAll }: ProceduresTabl
           </thead>
           <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-800">
             {atendimentos.map((item) => {
-              const { label, className } = statusMap[item.status];
+              const { label, className } = getStatusInfo(item.status);
               return (
                 <tr
                   key={item.id}

@@ -1,6 +1,24 @@
 import api from "./axiosConfig";
 
-export type AtendimentoStatus = "Scheduled" | "Completed" | "Cancelled";
+export type AtendimentoStatus = "Scheduled" | "InProgress" | "Completed" | "Cancelled";
+
+// Availability types
+export interface TimeSlot {
+  time: string;        // HH:MM format
+  available: boolean;
+  appointmentId?: string;
+}
+
+export interface AvailabilityResponse {
+  date: string;
+  professionalId: string;
+  slots: TimeSlot[];
+}
+
+export interface AvailabilityFilters {
+  date: string;          // YYYY-MM-DD
+  professionalId: string;
+}
 
 export interface Atendimento {
   id: string;
@@ -28,23 +46,168 @@ export interface CreateAtendimentoRequest {
   professionalId: string;
   tooth?: string;
   patientId: string;
+  treatmentItemId?: string;
+}
+
+// Dashboard types
+export interface DashboardFilters {
+  startDate?: string;
+  endDate?: string;
+  status?: number;  // 0=Scheduled, 1=InProgress, 2=Completed, 3=Cancelled
+  professionalId?: string;
+}
+
+export interface DashboardSummary {
+  total: number;
+  scheduled: number;
+  inProgress: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface DashboardAppointment {
+  id: string;
+  procedure: string;
+  scheduledAt: string;
+  status: AtendimentoStatus;
+  patientId: string;
+  patientName: string;
+  professionalName: string | null;
+  tooth: string | null;
+}
+
+export interface DashboardResponse {
+  referenceDate: string;
+  period: string;
+  summary: DashboardSummary;
+  appointments: DashboardAppointment[];
 }
 
 export const atendimentoService = {
+  // Endpoint legado com clinicId na URL
   async list(clinicId: string): Promise<Atendimento[]> {
     const response = await api.get(`/clinicas/${clinicId}/atendimentos`);
     return response.data;
   },
 
+  // ✅ NOVO: Dashboard sem clinicId (usa JWT)
+  async getDashboard(filters?: DashboardFilters): Promise<DashboardResponse> {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append("startDate", filters.startDate);
+    if (filters?.endDate) params.append("endDate", filters.endDate);
+    if (filters?.status !== undefined) params.append("status", String(filters.status));
+    if (filters?.professionalId) params.append("professionalId", filters.professionalId);
+
+    const queryString = params.toString();
+    const url = `/dashboard/agendamentos${queryString ? `?${queryString}` : ""}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  // Endpoint legado com clinicId na URL (para criar)
   async create(clinicId: string, data: CreateAtendimentoRequest): Promise<Atendimento> {
     const response = await api.post(`/clinicas/${clinicId}/atendimentos`, data);
     return response.data;
   },
 
-  async concluir(clinicId: string, atendimentoId: string): Promise<Atendimento> {
-    const response = await api.post(
-      `/clinicas/${clinicId}/atendimentos/${atendimentoId}/concluir`
-    );
+  // ✅ NOVO: Ações rápidas do dashboard (sem clinicId)
+  async concluir(atendimentoId: string): Promise<Atendimento> {
+    const response = await api.post(`/dashboard/agendamentos/${atendimentoId}/concluir`);
     return response.data;
+  },
+
+  async cancelar(atendimentoId: string): Promise<Atendimento> {
+    const response = await api.post(`/dashboard/agendamentos/${atendimentoId}/cancelar`);
+    return response.data;
+  },
+
+  async confirmar(atendimentoId: string): Promise<Atendimento> {
+    const response = await api.post(`/dashboard/agendamentos/${atendimentoId}/confirmar`);
+    return response.data;
+  },
+
+  /**
+   * Busca disponibilidade de horários para uma data e profissional
+   * 
+   * Tenta usar endpoint do backend: GET /appointments/availability
+   * Se não existir, gera slots localmente baseado em agendamentos do dashboard
+   */
+  async getAvailability(filters: AvailabilityFilters): Promise<AvailabilityResponse> {
+    const { date, professionalId } = filters;
+    
+    try {
+      // Tenta buscar do backend primeiro
+      const response = await api.get("/appointments/availability", {
+        params: { date, professionalId },
+      });
+      return response.data;
+    } catch (error) {
+      // Se endpoint não existir, gera slots localmente
+      // Busca agendamentos do dia para verificar ocupação
+      const dashboardResponse = await this.getDashboard({
+        startDate: date,
+        endDate: date,
+        professionalId,
+      });
+      
+      return this.generateLocalAvailability(date, professionalId, dashboardResponse.appointments);
+    }
+  },
+
+  /**
+   * Gera slots de disponibilidade localmente
+   * Horário comercial: 08:00 - 18:00, intervalos de 30 minutos
+   */
+  generateLocalAvailability(
+    date: string,
+    professionalId: string,
+    appointments: DashboardAppointment[]
+  ): AvailabilityResponse {
+    const slots: TimeSlot[] = [];
+    const startHour = 8;
+    const endHour = 18;
+    const intervalMinutes = 30;
+
+    // Cria set de horários ocupados
+    const occupiedTimes = new Set<string>();
+    appointments.forEach((apt) => {
+      if (apt.status !== "Cancelled") {
+        const aptDate = new Date(apt.scheduledAt);
+        const hours = aptDate.getHours().toString().padStart(2, "0");
+        const minutes = aptDate.getMinutes().toString().padStart(2, "0");
+        occupiedTimes.add(`${hours}:${minutes}`);
+      }
+    });
+
+    // Verifica se é hoje e pega hora atual
+    const now = new Date();
+    const isToday = date === now.toISOString().split("T")[0];
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    // Gera slots
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += intervalMinutes) {
+        const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+        
+        // Se é hoje, não permite horários passados
+        const isPastTime = isToday && (hour < currentHour || (hour === currentHour && minute <= currentMinute));
+        
+        const isOccupied = occupiedTimes.has(timeStr);
+        
+        slots.push({
+          time: timeStr,
+          available: !isOccupied && !isPastTime,
+          appointmentId: isOccupied 
+            ? appointments.find(a => {
+                const d = new Date(a.scheduledAt);
+                return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}` === timeStr;
+              })?.id 
+            : undefined,
+        });
+      }
+    }
+
+    return { date, professionalId, slots };
   },
 };

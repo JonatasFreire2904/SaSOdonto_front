@@ -1,7 +1,8 @@
 interface PatientHeaderProps {
   patient: {
     id: string;
-    fullName: string;
+    name?: string;      // Novo formato do backend
+    fullName?: string;  // Formato legado
     cpf: string;
     birthDate: string;
     gender: string;
@@ -15,6 +16,10 @@ interface PatientHeaderProps {
   onPrint: () => void;
   onNewAppointment: () => void;
 }
+
+// Helper para obter nome do paciente (suporta ambos os formatos)
+const getPatientName = (patient: PatientHeaderProps["patient"]) => 
+  patient.name ?? patient.fullName ?? "Paciente";
 
 const calcAge = (birthDate: string) => {
   const birth = new Date(birthDate);
@@ -34,6 +39,8 @@ const genderLabel = (g: string) => {
 };
 
 const PatientHeader = ({ patient, allergies, risks, onPrint, onNewAppointment }: PatientHeaderProps) => {
+  const displayName = getPatientName(patient);
+  
   return (
     <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
       <div className="flex gap-6 items-center">
@@ -45,7 +52,7 @@ const PatientHeader = ({ patient, allergies, risks, onPrint, onNewAppointment }:
         </div>
         <div className="flex flex-col">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{patient.fullName}</h1>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{displayName}</h1>
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium">
             {calcAge(patient.birthDate)} anos • {genderLabel(patient.gender)} • {new Date(patient.birthDate).toLocaleDateString("pt-BR")}
