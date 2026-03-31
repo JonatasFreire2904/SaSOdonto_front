@@ -10,6 +10,7 @@ export interface ErrorMessageMap {
   403?: string;
   404?: string;
   409?: string;
+  413?: string;
   500?: string;
   default?: string;
 }

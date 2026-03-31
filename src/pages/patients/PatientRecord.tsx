@@ -334,7 +334,7 @@ const PatientRecord = () => {
             setAtendimentos((prev) => [newAtendimento, ...prev]);
           }}
           patientId={id!}
-          patientName={patient.fullName}
+          patientName={patient.name ?? patient.fullName ?? ""}
           clinicId={clinicId}
         />
       )}

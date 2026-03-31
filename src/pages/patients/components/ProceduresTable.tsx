@@ -3,15 +3,16 @@ import { getStatusInfo } from "@/api.types";
 export interface Atendimento {
   id: string;
   procedure: string;
-  description: string | null;
-  notes: string | null;
+  description?: string;
+  notes?: string;
   scheduledAt: string;
-  completedAt: string | null;
+  completedAt?: string;
   status: string; // Aceita qualquer status retornado pelo backend
   price: number;
-  professionalId: string | null;
-  professionalName: string | null;
-  tooth: string | null;
+  durationMinutes: number;
+  professionalId?: string;
+  professionalName?: string;
+  tooth?: string;
   patientId: string;
   patientName: string;
   createdAt: string;

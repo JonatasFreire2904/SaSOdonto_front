@@ -64,14 +64,27 @@ const statusConfig: Record<AtendimentoStatus, { label: string; dotColor: string;
   },
 };
 
-const formatEndTime = (hour: number): string =>
-  `${(hour + 1).toString().padStart(2, "0")}:00`;
-
-/** Extrai a hora local corretamente — backend pode retornar UTC sem sufixo 'Z' */
-const parseLocalHour = (scheduledAt: string): number => {
-  const hasTimezone = scheduledAt.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(scheduledAt);
-  return new Date(hasTimezone ? scheduledAt : scheduledAt + "Z").getHours();
+const formatTime = (date: Date): string => {
+  const h = date.getHours().toString().padStart(2, "0");
+  const m = date.getMinutes().toString().padStart(2, "0");
+  return `${h}:${m}`;
 };
+
+const formatEndTimeFromAppointment = (scheduledAt: string, durationMinutes: number): string => {
+  const end = new Date(new Date(scheduledAt).getTime() + durationMinutes * 60_000);
+  return formatTime(end);
+};
+
+const formatDurationLabel = (minutes: number): string => {
+  if (minutes < 60) return `${minutes}min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${h}h`;
+};
+
+/** Extrai a hora local de um scheduledAt ISO string */
+const parseLocalHour = (scheduledAt: string): number =>
+  new Date(scheduledAt).getHours();
 
 /**
  * Timeline diária de agendamentos
@@ -283,8 +296,9 @@ const AppointmentCard = ({
   showProfessionalName = false,
 }: AppointmentCardProps) => {
   const config = statusConfig[appointment.status] || statusConfig.Scheduled;
-  const endTime = formatEndTime(hour);
+  const endTime = formatEndTimeFromAppointment(appointment.scheduledAt, appointment.durationMinutes);
   const timeStr = `${hour.toString().padStart(2, "0")}:00`;
+  const durationLabel = formatDurationLabel(appointment.durationMinutes);
 
   return (
     <div
@@ -303,7 +317,7 @@ const AppointmentCard = ({
           {appointment.procedure}
         </span>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {timeStr} - {endTime}
+          {timeStr} - {endTime} ({durationLabel})
           {appointment.tooth && ` • Dente ${appointment.tooth}`}
           {showProfessionalName && appointment.professionalName && (
             <> • <span className="font-semibold text-primary">{appointment.professionalName}</span></>
@@ -387,7 +401,7 @@ const AvailableSlot = ({ timeLabel, isSelected, hour, onSelect, remainingSlots }
         <span className="material-symbols-outlined text-lg">check_circle</span>
         <span className="font-bold text-sm">Selecionado</span>
         <span className="text-xs opacity-80 ml-1">
-          {timeLabel} - {formatEndTime(hour)}
+          {timeLabel} - {`${(hour + 1).toString().padStart(2, "0")}:00`}
         </span>
       </button>
     );

@@ -5,9 +5,9 @@ export interface PlanItem {
   toothNumber: number;
   procedureName: string;
   status: "planned" | "inProgress" | "completed" | "cancelled";
-  notes: string | null;
-  completionComment: string | null;
-  completedAt: string | null;
+  notes?: string;
+  completionComment?: string;
+  completedAt?: string;
   createdAt: string;
 }
 

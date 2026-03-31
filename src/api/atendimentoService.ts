@@ -23,15 +23,16 @@ export interface AvailabilityFilters {
 export interface Atendimento {
   id: string;
   procedure: string;
-  description: string | null;
-  notes: string | null;
+  description?: string;
+  notes?: string;
   scheduledAt: string;
-  completedAt: string | null;
+  completedAt?: string;
   status: AtendimentoStatus;
   price: number;
-  professionalId: string | null;
-  professionalName: string | null;
-  tooth: string | null;
+  durationMinutes: number;
+  professionalId?: string;
+  professionalName?: string;
+  tooth?: string;
   patientId: string;
   patientName: string;
   createdAt: string;
@@ -71,10 +72,11 @@ export interface DashboardAppointment {
   procedure: string;
   scheduledAt: string;
   status: AtendimentoStatus;
+  durationMinutes: number;
   patientId: string;
   patientName: string;
-  professionalName: string | null;
-  tooth: string | null;
+  professionalName?: string;
+  tooth?: string;
 }
 
 export interface DashboardResponse {

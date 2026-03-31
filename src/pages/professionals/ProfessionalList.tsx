@@ -5,14 +5,14 @@ import { useUpdateProfessionalRole } from "@/hooks/mutations/useUpdateProfession
 import CreateProfessionalModal from "./components/CreateProfessionalModal";
 import EditProfessionalModal from "./components/EditProfessionalModal";
 import { formatRole, ROLE_OPTIONS } from "./utils";
-import type { Professional } from "@/api/professionalService";
+import type { Professional, ProfessionalRole } from "@/api/professionalService";
 
 const ProfessionalList = () => {
   const clinicId = localStorage.getItem("selectedClinicId") ?? "";
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
   const [roleEditingId, setRoleEditingId] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<ProfessionalRole>("Dentista");
 
   const { data: professionals = [], isLoading, refetch } = useProfessionals(clinicId);
   const { deleteProfessional } = useDeleteProfessional(clinicId);
@@ -20,7 +20,7 @@ const ProfessionalList = () => {
 
   const handleEditClick = (professional: Professional) => {
     setRoleEditingId(professional.id);
-    setSelectedRole(professional.role);
+    setSelectedRole(professional.role as ProfessionalRole);
   };
 
   const handleConfirmRole = (id: string) => {
@@ -30,7 +30,7 @@ const ProfessionalList = () => {
 
   const handleCancelEdit = () => {
     setRoleEditingId(null);
-    setSelectedRole("");
+    setSelectedRole("Dentista");
   };
 
   return (
@@ -111,7 +111,7 @@ const ProfessionalList = () => {
                     {roleEditingId === professional.id ? (
                       <select
                         value={selectedRole}
-                        onChange={(e) => setSelectedRole(e.target.value)}
+                        onChange={(e) => setSelectedRole(e.target.value as ProfessionalRole)}
                         className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       >
                         {ROLE_OPTIONS.map((r) => (

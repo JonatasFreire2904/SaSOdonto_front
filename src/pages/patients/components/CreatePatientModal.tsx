@@ -35,7 +35,7 @@ const CreatePatientModal = ({
 
     create(
       {
-        fullName: String(form.get("fullName")).trim(),
+        name: String(form.get("fullName")).trim(),
         cpf: normalizeCpf(cpf) || undefined,
         birthDate: new Date(String(form.get("birthDate"))).toISOString(),
         gender: String(form.get("gender")),

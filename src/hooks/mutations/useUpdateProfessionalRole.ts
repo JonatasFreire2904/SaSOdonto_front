@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { professionalService } from "@/api/professionalService";
+import { professionalService, type ProfessionalRole } from "@/api/professionalService";
 import { professionalKeys } from "@/hooks/queries/useProfessionals";
 import { getApiError } from "@/hooks/useApiError";
 
 interface UpdateRoleVariables {
   id: string;
-  role: string;
+  role: ProfessionalRole;
 }
 
 export const useUpdateProfessionalRole = (clinicId: string) => {
