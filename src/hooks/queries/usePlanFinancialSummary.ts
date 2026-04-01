@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { treatmentPlanService } from "@/api/treatmentPlanService";
-import type { TreatmentPlanFinancialSummary } from "@/api/treatmentPlanService";
+import { paymentService } from "@/infrastructure/http/paymentService";
+import type { TreatmentPlanFinancialSummary } from "@/domain/types";
 
 export const planFinancialSummaryKeys = (
   clinicId: string,
@@ -15,7 +15,7 @@ export const usePlanFinancialSummary = (
 ) => {
   return useQuery<TreatmentPlanFinancialSummary>({
     queryKey: planFinancialSummaryKeys(clinicId, patientId, planId),
-    queryFn: () => treatmentPlanService.getFinancialSummary(clinicId, patientId, planId),
+    queryFn: () => paymentService.getFinancialSummary(clinicId, patientId, planId),
     enabled: !!clinicId && !!patientId && !!planId,
   });
 };

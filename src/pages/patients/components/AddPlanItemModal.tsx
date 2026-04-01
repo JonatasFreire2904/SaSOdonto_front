@@ -1,5 +1,5 @@
 import { FormEvent, useState, useEffect } from "react";
-import { useCreatePlanItemNew } from "@/hooks/mutations/useCreatePlanItemNew";
+import { useCreatePlanItem } from "@/hooks/mutations/useCreatePlanItem";
 
 interface AddPlanItemModalProps {
   isOpen: boolean;
@@ -43,7 +43,7 @@ const AddPlanItemModal = ({
     }
   }, [isOpen, preselectedTooth]);
 
-  const { createItem, isPending, reset } = useCreatePlanItemNew({
+  const { createItem, isPending, reset } = useCreatePlanItem({
     clinicId,
     patientId,
     planId,

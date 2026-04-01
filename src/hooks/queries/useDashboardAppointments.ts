@@ -95,17 +95,17 @@ export const useDashboardAppointments = () => {
 
   // Mutations for quick actions (sem clinicId - usa JWT)
   const confirmMutation = useMutation({
-    mutationFn: (appointmentId: string) => atendimentoService.confirmar(appointmentId),
+    mutationFn: (appointmentId: string) => atendimentoService.confirm(appointmentId),
     onSuccess: invalidate,
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (appointmentId: string) => atendimentoService.cancelar(appointmentId),
+    mutationFn: (appointmentId: string) => atendimentoService.cancel(appointmentId),
     onSuccess: invalidate,
   });
 
   const completeMutation = useMutation({
-    mutationFn: (appointmentId: string) => atendimentoService.concluir(appointmentId),
+    mutationFn: (appointmentId: string) => atendimentoService.complete(appointmentId),
     onSuccess: invalidate,
   });
 

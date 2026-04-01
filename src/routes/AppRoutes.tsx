@@ -9,7 +9,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import ProfessionalList from "@/pages/professionals/ProfessionalList";
 import ComingSoon from "@/pages/ComingSoon";
-import AgendamentosPage from "@/pages/agendamentos";
+import AgendamentosPage from "@/pages/agendamentos/AgendamentosPage";
 
 const AppRoutes = () => {
   return (

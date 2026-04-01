@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { treatmentPlanService } from "@/api/treatmentPlanService";
-import type { RegisterPaymentRequest } from "@/api/treatmentPlanService";
+import { paymentService } from "@/infrastructure/http/paymentService";
+import type { RegisterPaymentRequest } from "@/domain/types";
 import { planItemsKeys } from "@/hooks/queries/usePlanItems";
 import { paymentHistoryKeys } from "@/hooks/queries/usePaymentHistory";
 
@@ -15,7 +15,7 @@ export const usePayments = ({ clinicId, patientId, planId }: UsePaymentsContext)
 
   const mutation = useMutation({
     mutationFn: ({ itemId, data }: { itemId: string; data: RegisterPaymentRequest }) =>
-      treatmentPlanService.registerItemPayment(clinicId, patientId, planId, itemId, data),
+      paymentService.register(clinicId, patientId, planId, itemId, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: planItemsKeys(clinicId, patientId, planId),

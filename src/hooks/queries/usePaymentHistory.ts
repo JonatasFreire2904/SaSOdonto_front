@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { treatmentPlanService } from "@/api/treatmentPlanService";
-import type { PaymentResponse } from "@/api/treatmentPlanService";
+import { paymentService } from "@/infrastructure/http/paymentService";
+import type { PaymentRecord } from "@/domain/types";
 
 export const paymentHistoryKeys = (
   clinicId: string,
@@ -15,10 +15,10 @@ export const usePaymentHistory = (
   planId: string,
   itemId: string | null
 ) => {
-  return useQuery<PaymentResponse[]>({
+  return useQuery<PaymentRecord[]>({
     queryKey: paymentHistoryKeys(clinicId, patientId, planId, itemId ?? ""),
     queryFn: () =>
-      treatmentPlanService.listItemPayments(clinicId, patientId, planId, itemId as string),
+      paymentService.listByItem(clinicId, patientId, planId, itemId as string),
     enabled: !!clinicId && !!patientId && !!planId && !!itemId,
   });
 };

@@ -3,18 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import ClinicCard from "@/components/ui/ClinicCard";
 import CreateClinicModal from "@/components/ui/CreateClinicModal";
-import api from "@/api/axiosConfig";
-import { extractErrorMessage } from "@/api.types";
-
-// Tipo para representar os dados de uma clínica
-export interface Clinic {
-  id: string;
-  name: string;
-  location: string;
-  imageUrl: string;
-  status: "active" | "inactive";
-  teamCount: number;
-}
+import { clinicService } from "@/infrastructure/http/clinicService";
+import { extractErrorMessage } from "@/infrastructure/adapters/responseAdapter";
+import type { Clinic } from "@/domain/types";
 
 const ClinicSelection = () => {
   const { user, logout } = useAuth();
@@ -27,44 +18,19 @@ const ClinicSelection = () => {
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchClinics = async () => {
-      try {
-        // chamar rota getClinicas (GET /clinicas)
-        const response = await api.get("/clinicas");
-        setClinics(response.data);
-      } catch (error) {
-        console.error("Erro ao buscar clínicas:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchClinics();
+    clinicService
+      .list()
+      .then(setClinics)
+      .catch((err) => console.error("Erro ao buscar clínicas:", err))
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleSelectClinic = async (clinicId: string) => {
     try {
-      // Chama endpoint de seleção que retorna novo token JWT
-      const response = await api.post(`/clinicas/${clinicId}/selecionar`);
-      
-      // IMPORTANTE: Substitui o token atual pelo novo (com clinic_id no claim)
-      if (response.data.token) {
-        localStorage.setItem("token", response.data.token);
-      }
-      
-      // Salva dados da clínica selecionada
-      localStorage.setItem("selectedClinic", JSON.stringify({
-        id: response.data.id,
-        name: response.data.name,
-        location: response.data.location,
-      }));
-      
+      await clinicService.select(clinicId);
       navigate("/dashboard");
     } catch (error) {
       console.error("Erro ao selecionar clínica:", error);
-      // Se falhar, tenta o fluxo antigo (compatibilidade)
-      localStorage.setItem("selectedClinicId", clinicId);
-      navigate("/dashboard");
     }
   };
 
@@ -72,12 +38,10 @@ const ClinicSelection = () => {
     setCreateError(null);
     setIsCreating(true);
     try {
-      // rota adicionar clinica (POST /clinicas)
-      const response = await api.post("/clinicas", data);
-      setClinics((prev) => [...prev, response.data]);
+      const created = await clinicService.create(data);
+      setClinics((prev) => [...prev, created]);
       setIsModalOpen(false);
     } catch (error) {
-      // Usa mensagem do backend se disponível
       setCreateError(extractErrorMessage(error, "Erro ao criar clínica. Tente novamente."));
     } finally {
       setIsCreating(false);
@@ -177,7 +141,6 @@ const ClinicSelection = () => {
                 />
               ))}
 
-              {/* Card de criar nova clínica */}
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-primary hover:bg-primary/5 transition-all duration-300 group min-h-[320px]"
@@ -198,7 +161,6 @@ const ClinicSelection = () => {
             </div>
           )}
 
-          {/* Footer/Support Section */}
           <div className="mt-16 p-6 bg-primary/5 rounded-xl border border-primary/10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4 text-center md:text-left">
               <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white shrink-0">
@@ -213,7 +175,6 @@ const ClinicSelection = () => {
                 </p>
               </div>
             </div>
-            {/* chamar rota de suporte / abrir chat de suporte */}
             <button className="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm">
               Falar com Suporte
             </button>
@@ -221,7 +182,6 @@ const ClinicSelection = () => {
         </div>
       </main>
 
-      {/* Modal de criação de clínica */}
       <CreateClinicModal
         isOpen={isModalOpen}
         onClose={() => {

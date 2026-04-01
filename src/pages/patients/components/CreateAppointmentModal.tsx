@@ -1,5 +1,5 @@
 import { FormEvent, useState, useEffect, useMemo } from "react";
-import { atendimentoService, ALLOWED_DURATIONS } from "@/api/atendimentoService";
+import { atendimentoService } from "@/api/atendimentoService";
 import type { Atendimento } from "@/api/atendimentoService";
 import { useProfessionals } from "@/hooks/queries/useProfessionals";
 import { useAppointmentAvailability } from "@/hooks/queries/useAppointmentAvailability";
@@ -138,11 +138,6 @@ const CreateAppointmentModal = ({
 
     if (!scheduledAt || !professionalId) {
       setError("Data, horário e profissional são obrigatórios.");
-      return;
-    }
-
-    if (!ALLOWED_DURATIONS.includes(durationMinutes)) {
-      setError("Duração inválida. Valores permitidos: 15, 30, 45, 60, 90, 120 minutos.");
       return;
     }
 

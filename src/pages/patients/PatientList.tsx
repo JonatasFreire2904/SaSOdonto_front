@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { usePatients, useDebounce } from "@/hooks/queries/usePatients";
 import CreatePatientModal from "./components/CreatePatientModal";
 import Pagination from "@/components/ui/Pagination";
-import type { PatientStatus } from "@/api/patientService";
+import type { PatientStatus, Patient } from "@/api/patientService";
 
 const PAGE_SIZE = 10;
 
@@ -44,7 +44,7 @@ const PatientList = () => {
     hasSearch
   );
 
-  const patients = data?.data ?? [];
+  const patients = data?.items ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total = data?.totalCount ?? 0;
 
@@ -136,7 +136,7 @@ const PatientList = () => {
                 </tr>
               </thead>
               <tbody>
-                {patients.map((patient) => (
+                {patients.map((patient: Patient) => (
                   <tr
                     key={patient.id}
                     onClick={() => navigate(`/dashboard/pacientes/${patient.id}`)}
@@ -148,7 +148,7 @@ const PatientList = () => {
                           <span className="material-symbols-outlined text-lg">person</span>
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-900 dark:text-slate-100">{patient.fullName}</p>
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">{patient.name}</p>
                           <p className="text-xs text-slate-500">{patient.email}</p>
                         </div>
                       </div>

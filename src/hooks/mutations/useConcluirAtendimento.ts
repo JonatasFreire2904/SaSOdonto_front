@@ -7,7 +7,7 @@ export const useConcluirAtendimento = (clinicId: string) => {
 
   const mutation = useMutation({
     mutationFn: (atendimentoId: string) =>
-      atendimentoService.concluir(atendimentoId),
+      atendimentoService.complete(atendimentoId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: atendimentoKeys(clinicId) });
     },

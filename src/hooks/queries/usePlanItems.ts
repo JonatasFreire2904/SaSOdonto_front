@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { treatmentPlanService } from "@/api/treatmentPlanService";
-import type { PlanItem } from "@/api/treatmentPlanService";
+import { planItemService } from "@/infrastructure/http/planItemService";
+import type { PlanItem } from "@/domain/types";
 
 export const planItemsKeys = (clinicId: string, patientId: string, planId: string) => [
   "planItems",
@@ -16,7 +16,7 @@ export const usePlanItems = (
 ) => {
   return useQuery<PlanItem[]>({
     queryKey: planItemsKeys(clinicId, patientId, planId ?? ""),
-    queryFn: () => treatmentPlanService.listItems(clinicId, patientId, planId!),
+    queryFn: () => planItemService.list(clinicId, patientId, planId!),
     enabled: !!clinicId && !!patientId && !!planId,
   });
 };

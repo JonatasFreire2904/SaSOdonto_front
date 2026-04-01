@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { extractErrorMessage } from "@/api.types";
+import { extractErrorMessage } from "@/infrastructure/adapters/responseAdapter";
 
 /**
  * Interface para mapear códigos de status HTTP para mensagens amigáveis

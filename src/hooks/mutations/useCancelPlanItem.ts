@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { treatmentPlanService } from "@/api/treatmentPlanService";
+import { planItemService } from "@/infrastructure/http/planItemService";
 import { planItemsKeys } from "@/hooks/queries/usePlanItems";
 
 interface UseCancelPlanItemContext {
@@ -17,7 +17,7 @@ export const useCancelPlanItem = ({
 
   const mutation = useMutation({
     mutationFn: (itemId: string) =>
-      treatmentPlanService.cancelItem(clinicId, patientId, planId, itemId),
+      planItemService.cancel(clinicId, patientId, planId, itemId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: planItemsKeys(clinicId, patientId, planId),

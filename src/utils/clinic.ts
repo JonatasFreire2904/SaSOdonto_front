@@ -1,14 +1,7 @@
 /**
- * Obtém o clinicId do localStorage
- * Compatível com formato legado (selectedClinicId) e novo (selectedClinic JSON)
+ * @deprecated Importe de @/infrastructure/storage/clinicStorage
+ * Mantido para compatibilidade durante a migração
  */
-export const getClinicId = (): string => {
-  try {
-    const stored = localStorage.getItem("selectedClinic");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return parsed.id || parsed.clinicId || localStorage.getItem("selectedClinicId") || "";
-    }
-  } catch { /* fallback */ }
-  return localStorage.getItem("selectedClinicId") || "";
-};
+import { clinicStorage } from "@/infrastructure/storage/clinicStorage";
+
+export const getClinicId = (): string => clinicStorage.getClinicId();

@@ -1,5 +1,5 @@
 import { FormEvent, useState, useEffect, useMemo } from "react";
-import { atendimentoService, ALLOWED_DURATIONS } from "@/api/atendimentoService";
+import { atendimentoService } from "@/api/atendimentoService";
 import { patientService } from "@/api/patientService";
 import { useProfessionals } from "@/hooks/queries/useProfessionals";
 import { useAppointmentAvailability } from "@/hooks/queries/useAppointmentAvailability";
@@ -77,7 +77,7 @@ const NewAppointmentModal = ({
     "Active",
     isOpen && step === "patient" && hasDebouncedPatientSearch
   );
-  const patients = hasDebouncedPatientSearch ? (patientsData?.data || []) : [];
+  const patients = hasDebouncedPatientSearch ? (patientsData?.items || []) : [];
 
   const { data: professionals = [] } = useProfessionals(clinicId);
   const activeProfessionals = useMemo(
@@ -268,11 +268,6 @@ const NewAppointmentModal = ({
     const priceValue = price ? parseFloat(price) : 0;
     if (isNaN(priceValue) || priceValue < 0) {
       setError("Valor inválido.");
-      return;
-    }
-
-    if (!ALLOWED_DURATIONS.includes(finalDuration)) {
-      setError("Duração inválida. Valores permitidos: 15, 30, 45, 60, 90, 120 minutos.");
       return;
     }
 
