@@ -1,5 +1,5 @@
 import { FormEvent, useState, useEffect, useMemo } from "react";
-import { atendimentoService } from "@/api/atendimentoService";
+import { atendimentoService, ALLOWED_DURATIONS } from "@/api/atendimentoService";
 import type { Atendimento } from "@/api/atendimentoService";
 import { useProfessionals } from "@/hooks/queries/useProfessionals";
 import { useAppointmentAvailability } from "@/hooks/queries/useAppointmentAvailability";
@@ -55,7 +55,11 @@ const CreateAppointmentModal = ({
     slots,
     isLoading: isSlotsLoading,
     isSelectionValid,
-  } = useAppointmentAvailability();
+    canFitDuration,
+    isSelectionValidForDuration,
+  } = useAppointmentAvailability({ clinicId });
+
+  const durationMinutes = 60;
 
   // Seleciona primeiro profissional disponível ao carregar
   useEffect(() => {
@@ -84,14 +88,25 @@ const CreateAppointmentModal = ({
     if (treatment) {
       setManualProcedure("");
       setManualTooth("");
+      setPrice(
+        typeof treatment.price === "number" && Number.isFinite(treatment.price)
+          ? String(treatment.price)
+          : ""
+      );
     }
   };
 
   const handleContinue = () => {
-    if (!isSelectionValid) {
+    if (!isSelectionValidForDuration(durationMinutes)) {
       setError("Selecione uma data, horário e profissional.");
       return;
     }
+
+    if (selectedTime && !canFitDuration(selectedTime, durationMinutes)) {
+      setError("Este horário não comporta a duração escolhida. Selecione outro horário.");
+      return;
+    }
+
     setError(null);
     setStep("details");
   };
@@ -126,6 +141,16 @@ const CreateAppointmentModal = ({
       return;
     }
 
+    if (!ALLOWED_DURATIONS.includes(durationMinutes)) {
+      setError("Duração inválida. Valores permitidos: 15, 30, 45, 60, 90, 120 minutos.");
+      return;
+    }
+
+    if (selectedTime && !canFitDuration(selectedTime, durationMinutes)) {
+      setError("Este horário não comporta a duração escolhida. Selecione outro horário.");
+      return;
+    }
+
     const priceValue = price ? parseFloat(price) : 0;
     if (isNaN(priceValue) || priceValue < 0) {
       setError("Valor inválido.");
@@ -143,22 +168,33 @@ const CreateAppointmentModal = ({
         tooth,
         patientId,
         treatmentItemId: selectedTreatmentId || undefined,
+        durationMinutes,
       });
       onSuccess(result);
       onClose();
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 400) setError("Profissional inválido para atendimentos.");
-      else if (status === 403) setError("Profissional não pertence a esta clínica.");
-      else if (status === 404) setError("Paciente ou profissional não encontrado.");
-      else if (status === 409) setError("Horário já está ocupado. Escolha outro horário.");
-      else setError("Erro ao criar agendamento.");
+      const errorPayload = (err as { response?: { status?: number; data?: { code?: string; message?: string } } })?.response;
+      const status = errorPayload?.status;
+      const code = errorPayload?.data?.code;
+
+      if (status === 409 || code === "APPOINTMENT_CONFLICT") {
+        setError("Horário já está ocupado. Escolha outro horário.");
+      } else if (code === "INVALID_DURATION") {
+        setError("Duração inválida. Valores permitidos: 15, 30, 45, 60, 90, 120 minutos.");
+      } else if (status === 403) {
+        setError("Profissional não pertence a esta clínica.");
+      } else if (status === 404) {
+        setError("Paciente ou profissional não encontrado.");
+      } else {
+        setError(errorPayload?.data?.message || "Erro ao criar agendamento.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const selectedProfessionalName = activeProfessionals.find(p => p.id === professionalId)?.userName;
+  const hasDurationConflict = !!selectedTime && !canFitDuration(selectedTime, durationMinutes);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -296,6 +332,13 @@ const CreateAppointmentModal = ({
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {selectedDate && selectedTime && professionalId && hasDurationConflict && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">warning</span>
+                  Este horário não comporta consulta de 60 minutos. Selecione outro horário.
                 </div>
               )}
             </div>
@@ -457,7 +500,7 @@ const CreateAppointmentModal = ({
                 <button
                   type="button"
                   onClick={handleContinue}
-                  disabled={!isSelectionValid}
+                  disabled={!isSelectionValidForDuration(durationMinutes)}
                   className="flex-1 py-3 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                 >
                   Continuar

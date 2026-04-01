@@ -20,7 +20,10 @@ const ClinicCard = ({
   teamCount,
   onClick,
 }: ClinicCardProps) => {
-  const { label, color } = statusMap[status];
+  const { label, color } = statusMap[status] ?? {
+    label: String(status || "Status"),
+    color: "bg-slate-400",
+  };
 
   return (
     <button

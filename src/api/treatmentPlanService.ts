@@ -4,16 +4,22 @@ export interface PlanItem {
   id: string;
   toothNumber: number;
   procedureName: string;
-  status: "planned" | "inProgress" | "completed" | "cancelled";
+  price?: number | null;
+  paidAmount?: number | null;
+  balanceAmount?: number | null;
+  paymentStatus?: "Unpaid" | "PartiallyPaid" | "Paid";
+  status: "planned" | "inProgress" | "completed" | "cancelled" | "Planned" | "InProgress" | "Completed" | "Cancelled";
   notes?: string;
   completionComment?: string;
   completedAt?: string;
   createdAt: string;
+  payments?: PaymentResponse[];
 }
 
 export interface CreatePlanItemRequest {
   toothNumber?: number | null;  // Opcional para procedimentos gerais
   procedureName: string;
+  price?: number | null;
   notes?: string | null;
 }
 
@@ -57,6 +63,8 @@ export interface PendingTreatmentItem {
   id: string;
   toothNumber?: number;           // 0 = procedimento geral, pode ser undefined
   procedureName: string;
+  price?: number | null;
+  paidAmount?: number | null;
   status: "Planned" | "InProgress" | string;
   notes?: string | null;
   createdAt?: string;
@@ -73,6 +81,47 @@ export interface PendingTreatmentItem {
 export const formatToothNumber = (toothNumber: number): string => {
   return toothNumber === 0 ? "Geral" : `Dente ${toothNumber}`;
 };
+
+export enum PaymentMethod {
+  Pix = 0,
+  Cash = 1,
+  CreditCard = 2,
+  DebitCard = 3,
+}
+
+export interface RegisterPaymentRequest {
+  amount: number;
+  method: PaymentMethod;
+  installments?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  machineFeePercent?: number;
+  machineFeeAmount?: number;
+  netAmount?: number;
+  paidAt?: string;
+  note?: string;
+}
+
+export interface PaymentResponse {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  installments?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  machineFeePercent?: number;
+  machineFeeAmount?: number;
+  netAmount?: number;
+  paidAt: string;
+  note?: string;
+}
+
+export interface TreatmentPlanFinancialSummary {
+  totalTreatment: number;
+  totalCompleted: number;
+  totalPaid: number;
+  remainingBalance: number;
+}
 
 const extractPayload = <T>(raw: unknown): T => {
   if (raw && typeof raw === "object" && "data" in (raw as Record<string, unknown>)) {
@@ -187,6 +236,51 @@ export const treatmentPlanService = {
     await api.patch(
       `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/itens/${itemId}/cancelar`
     );
+  },
+
+  async registerItemPayment(
+    clinicId: string,
+    patientId: string,
+    planId: string,
+    itemId: string,
+    data: RegisterPaymentRequest
+  ): Promise<PaymentResponse> {
+    const response = await api.patch(
+      `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/itens/${itemId}/pagamento`,
+      data
+    );
+    return extractPayload<PaymentResponse>(response.data);
+  },
+
+  async listItemPayments(
+    clinicId: string,
+    patientId: string,
+    planId: string,
+    itemId: string
+  ): Promise<PaymentResponse[]> {
+    try {
+      const response = await api.get(
+        `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/itens/${itemId}/pagamentos`
+      );
+      return extractPayload<PaymentResponse[]>(response.data) ?? [];
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  },
+
+  async getFinancialSummary(
+    clinicId: string,
+    patientId: string,
+    planId: string
+  ): Promise<TreatmentPlanFinancialSummary> {
+    const response = await api.get(
+      `/clinicas/${clinicId}/pacientes/${patientId}/plano-tratamento/${planId}/financeiro`
+    );
+    return extractPayload<TreatmentPlanFinancialSummary>(response.data);
   },
 
   /**

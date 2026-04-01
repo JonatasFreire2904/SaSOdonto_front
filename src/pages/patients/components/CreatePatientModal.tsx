@@ -19,11 +19,13 @@ const CreatePatientModal = ({
   const { create, isLoading, error, reset } = useCreatePatient(clinicId);
   const [cpf, setCpf] = useState("");
   const [phone, setPhone] = useState("");
+  const [clientError, setClientError] = useState<string | null>(null);
 
   const handleClose = () => {
     reset();
     setCpf("");
     setPhone("");
+    setClientError(null);
     onClose();
   };
 
@@ -32,12 +34,21 @@ const CreatePatientModal = ({
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    const birthDate = String(form.get("birthDate"));
+    const normalizedCpf = normalizeCpf(cpf);
+
+    if (birthDate && new Date(`${birthDate}T00:00:00`) > new Date()) {
+      setClientError("Data de nascimento não pode ser no futuro.");
+      return;
+    }
+
+    setClientError(null);
 
     create(
       {
-        name: String(form.get("fullName")).trim(),
-        cpf: normalizeCpf(cpf) || undefined,
-        birthDate: new Date(String(form.get("birthDate"))).toISOString(),
+        fullName: String(form.get("fullName")).trim(),
+        cpf: normalizedCpf || undefined,
+        birthDate,
         gender: String(form.get("gender")),
         phone: normalizePhone(phone) || undefined,
         email: String(form.get("email")).trim() || undefined,
@@ -74,6 +85,17 @@ const CreatePatientModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="p-3 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 text-sm">
+            Campos obrigatorios: <span className="font-semibold">Nome completo, Data de nascimento e Sexo</span>.
+          </div>
+
+          {clientError && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {clientError}
+            </div>
+          )}
+
           {error && (
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium flex items-center gap-2">
               <span className="material-symbols-outlined text-lg">error</span>
@@ -97,7 +119,7 @@ const CreatePatientModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label htmlFor="cpf" className="text-sm font-semibold text-slate-700 dark:text-slate-300">CPF</label>
+              <label htmlFor="cpf" className="text-sm font-semibold text-slate-700 dark:text-slate-300">CPF (opcional)</label>
               <input
                 id="cpf"
                 name="cpf"
@@ -119,6 +141,7 @@ const CreatePatientModal = ({
                 name="birthDate"
                 type="date"
                 required
+                max={new Date().toISOString().split("T")[0]}
                 className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white"
               />
             </div>
@@ -141,7 +164,7 @@ const CreatePatientModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label htmlFor="phone" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Telefone</label>
+              <label htmlFor="phone" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Telefone (opcional)</label>
               <input
                 id="phone"
                 name="phone"
@@ -155,7 +178,7 @@ const CreatePatientModal = ({
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">E-mail</label>
+              <label htmlFor="email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">E-mail (opcional)</label>
               <input
                 id="email"
                 name="email"
@@ -167,7 +190,7 @@ const CreatePatientModal = ({
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="address" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Endereço</label>
+            <label htmlFor="address" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Endereço (opcional)</label>
             <input
               id="address"
               name="address"
@@ -178,7 +201,7 @@ const CreatePatientModal = ({
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="notes" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Observações</label>
+            <label htmlFor="notes" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Observações (opcional)</label>
             <textarea
               id="notes"
               name="notes"

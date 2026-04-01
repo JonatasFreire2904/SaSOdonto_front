@@ -27,7 +27,11 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+      localStorage.removeItem("user");
+
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login?reason=session-expired";
+      }
     }
 
     // Enriquece o erro com mensagem extraída no formato padronizado

@@ -30,6 +30,7 @@ const AddPlanItemModal = ({
   const [isGeneral, setIsGeneral] = useState(preselectedTooth === null);
   const [toothNumber, setToothNumber] = useState(preselectedTooth?.toString() || "");
   const [procedureName, setProcedureName] = useState("");
+  const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -50,6 +51,7 @@ const AddPlanItemModal = ({
 
   const resetForm = () => {
     setProcedureName("");
+    setPrice("");
     setNotes("");
     setValidationError(null);
     setMutationError(null);
@@ -65,6 +67,7 @@ const AddPlanItemModal = ({
 
   const handleQuickSelect = (procedure: typeof COMMON_PROCEDURES[0]) => {
     setProcedureName(procedure.name);
+    setPrice(String(procedure.price));
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -72,6 +75,12 @@ const AddPlanItemModal = ({
 
     if (!procedureName.trim()) {
       setValidationError("Informe o nome do procedimento");
+      return;
+    }
+
+    const parsedPrice = price.trim() ? Number(price) : null;
+    if (parsedPrice !== null && (Number.isNaN(parsedPrice) || parsedPrice < 0)) {
+      setValidationError("Informe um valor válido");
       return;
     }
 
@@ -92,6 +101,7 @@ const AddPlanItemModal = ({
       {
         toothNumber: finalToothNumber ?? 0,  // 0 para procedimento geral
         procedureName: procedureName.trim(),
+        price: parsedPrice,
         notes: notes.trim() || null,
       },
       {
@@ -237,6 +247,25 @@ const AddPlanItemModal = ({
             {validationError && (
               <p className="text-sm text-rose-600 font-medium">{validationError}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="price"
+              className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+            >
+              Valor (R$)
+            </label>
+            <input
+              id="price"
+              type="number"
+              min="0"
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="Ex: 250.00"
+              className="block w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white placeholder:text-slate-400"
+            />
           </div>
 
           {/* Observações */}

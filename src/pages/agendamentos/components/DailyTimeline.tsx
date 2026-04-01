@@ -296,6 +296,10 @@ const AppointmentCard = ({
   showProfessionalName = false,
 }: AppointmentCardProps) => {
   const config = statusConfig[appointment.status] || statusConfig.Scheduled;
+  const isFirstAppointment = appointment.procedure.startsWith("Primeira Consulta - ");
+  const procedureLabel = isFirstAppointment
+    ? appointment.procedure.replace("Primeira Consulta - ", "")
+    : appointment.procedure;
   const endTime = formatEndTimeFromAppointment(appointment.scheduledAt, appointment.durationMinutes);
   const timeStr = `${hour.toString().padStart(2, "0")}:00`;
   const durationLabel = formatDurationLabel(appointment.durationMinutes);
@@ -311,11 +315,18 @@ const AppointmentCard = ({
           </h4>
           <span className={`w-2 h-2 rounded-full shrink-0 ${config.dotColor}`} />
         </div>
-        <span
-          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${config.textColor} bg-white/60 dark:bg-black/10`}
-        >
-          {appointment.procedure}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap">
+          {isFirstAppointment && (
+            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200">
+              Primeira vez
+            </span>
+          )}
+          <span
+            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${config.textColor} bg-white/60 dark:bg-black/10`}
+          >
+            {procedureLabel}
+          </span>
+        </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">
           {timeStr} - {endTime} ({durationLabel})
           {appointment.tooth && ` • Dente ${appointment.tooth}`}

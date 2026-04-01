@@ -12,13 +12,18 @@ export interface TimeSlot {
 export interface AvailabilityResponse {
   date: string;
   professionalId: string;
+  professionalName?: string;
   slots: TimeSlot[];
 }
 
 export interface AvailabilityFilters {
+  clinicId: string;
   date: string;          // YYYY-MM-DD
   professionalId: string;
 }
+
+export const ALLOWED_DURATIONS = [15, 30, 45, 60, 90, 120] as const;
+export type AllowedDuration = (typeof ALLOWED_DURATIONS)[number];
 
 export interface Atendimento {
   id: string;
@@ -48,7 +53,7 @@ export interface CreateAtendimentoRequest {
   tooth?: string;
   patientId: string;
   treatmentItemId?: string;
-  durationMinutes?: number;
+  durationMinutes?: AllowedDuration;
 }
 
 // Dashboard types
@@ -136,25 +141,11 @@ export const atendimentoService = {
    * Se não existir, gera slots localmente baseado em agendamentos do dashboard
    */
   async getAvailability(filters: AvailabilityFilters): Promise<AvailabilityResponse> {
-    const { date, professionalId } = filters;
-    
-    try {
-      // Tenta buscar do backend primeiro
-      const response = await api.get("/appointments/availability", {
-        params: { date, professionalId },
-      });
-      return response.data;
-    } catch (error) {
-      // Se endpoint não existir, gera slots localmente
-      // Busca agendamentos do dia para verificar ocupação
-      const dashboardResponse = await this.getDashboard({
-        startDate: date,
-        endDate: date,
-        professionalId,
-      });
-      
-      return this.generateLocalAvailability(date, professionalId, dashboardResponse.appointments);
-    }
+    const { clinicId, date, professionalId } = filters;
+    const response = await api.get(`/clinicas/${clinicId}/atendimentos/disponibilidade`, {
+      params: { date, professionalId },
+    });
+    return response.data;
   },
 
   /**
@@ -169,18 +160,17 @@ export const atendimentoService = {
     const slots: TimeSlot[] = [];
     const startHour = 8;
     const endHour = 18;
-    const intervalMinutes = 30;
+    const intervalMinutes = 15;
 
-    // Cria set de horários ocupados
-    const occupiedTimes = new Set<string>();
-    appointments.forEach((apt) => {
-      if (apt.status !== "Cancelled") {
-        const aptDate = new Date(apt.scheduledAt);
-        const hours = aptDate.getHours().toString().padStart(2, "0");
-        const minutes = aptDate.getMinutes().toString().padStart(2, "0");
-        occupiedTimes.add(`${hours}:${minutes}`);
-      }
-    });
+    // Converte appointments em intervalos ocupados reais (inicio/fim) para detectar sobreposição.
+    const occupiedRanges = appointments
+      .filter((apt) => apt.status !== "Cancelled")
+      .map((apt) => {
+        const start = new Date(apt.scheduledAt);
+        const duration = apt.durationMinutes && apt.durationMinutes > 0 ? apt.durationMinutes : 30;
+        const end = new Date(start.getTime() + duration * 60 * 1000);
+        return { start, end, appointmentId: apt.id };
+      });
 
     // Verifica se é hoje e pega hora atual
     const now = new Date();
@@ -196,17 +186,17 @@ export const atendimentoService = {
         // Se é hoje, não permite horários passados
         const isPastTime = isToday && (hour < currentHour || (hour === currentHour && minute <= currentMinute));
         
-        const isOccupied = occupiedTimes.has(timeStr);
+        const slotStart = new Date(`${date}T${timeStr}:00`);
+        const slotEnd = new Date(slotStart.getTime() + intervalMinutes * 60 * 1000);
+        const occupiedRange = occupiedRanges.find(
+          (range) => slotStart < range.end && slotEnd > range.start
+        );
+        const isOccupied = !!occupiedRange;
         
         slots.push({
           time: timeStr,
           available: !isOccupied && !isPastTime,
-          appointmentId: isOccupied 
-            ? appointments.find(a => {
-                const d = new Date(a.scheduledAt);
-                return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}` === timeStr;
-              })?.id 
-            : undefined,
+          appointmentId: occupiedRange?.appointmentId,
         });
       }
     }

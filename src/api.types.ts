@@ -74,7 +74,8 @@ export interface PatientResponse {
 }
 
 export interface CreatePatientRequest {
-  name: string;
+  fullName: string;
+  name?: string;
   cpf?: string;
   email?: string;
   phone?: string;
@@ -84,6 +85,7 @@ export interface CreatePatientRequest {
 }
 
 export interface UpdatePatientRequest {
+  fullName?: string;
   name?: string;
   cpf?: string;
   email?: string;

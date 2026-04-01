@@ -18,7 +18,7 @@ export const useCreatePatient = (clinicId: string) => {
   // Extrai mensagem de erro - prioriza mensagem do backend
   const getError = (): string | null => {
     return getApiError(mutation.error, {
-      400: "Preencha todos os campos obrigatórios.",
+      400: "Campos obrigatórios: Nome completo, Data de nascimento e Sexo.",
       409: "CPF já cadastrado.",
       default: "Erro ao cadastrar paciente. Tente novamente.",
     });

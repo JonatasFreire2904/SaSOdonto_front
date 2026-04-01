@@ -1,5 +1,31 @@
 export const normalizeCpf = (value: string) => value.replace(/\D/g, "").slice(0, 11);
 
+export const isValidCpf = (value: string) => {
+  const cpf = normalizeCpf(value);
+
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) {
+    sum += Number(cpf[i]) * (10 - i);
+  }
+
+  let checkDigit = (sum * 10) % 11;
+  if (checkDigit === 10) checkDigit = 0;
+  if (checkDigit !== Number(cpf[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i += 1) {
+    sum += Number(cpf[i]) * (11 - i);
+  }
+
+  checkDigit = (sum * 10) % 11;
+  if (checkDigit === 10) checkDigit = 0;
+
+  return checkDigit === Number(cpf[10]);
+};
+
 export const formatCpf = (value: string) => {
   const digits = normalizeCpf(value);
 

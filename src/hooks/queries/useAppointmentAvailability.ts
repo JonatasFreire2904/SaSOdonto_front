@@ -3,6 +3,7 @@ import { useMemo, useState, useCallback } from "react";
 import { atendimentoService, AvailabilityResponse } from "@/api/atendimentoService";
 
 interface UseAppointmentAvailabilityOptions {
+  clinicId?: string;
   professionalId?: string;
   initialDate?: string;
 }
@@ -21,16 +22,23 @@ export const useAppointmentAvailability = (options: UseAppointmentAvailabilityOp
   
   const [selectedDate, setSelectedDate] = useState<string>(options.initialDate || today);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [clinicId] = useState<string | undefined>(options.clinicId);
   const [professionalId, setProfessionalId] = useState<string | undefined>(options.professionalId);
+
+  const toMinutes = useCallback((time: string): number => {
+    const [hour, minute] = time.split(":").map(Number);
+    return hour * 60 + minute;
+  }, []);
 
   // Query para buscar disponibilidade
   const availabilityQuery = useQuery<AvailabilityResponse>({
-    queryKey: ["appointment-availability", selectedDate, professionalId],
+    queryKey: ["appointment-availability", clinicId, selectedDate, professionalId],
     queryFn: () => atendimentoService.getAvailability({
+      clinicId: clinicId!,
       date: selectedDate,
       professionalId: professionalId!,
     }),
-    enabled: !!selectedDate && !!professionalId,
+    enabled: !!clinicId && !!selectedDate && !!professionalId,
     staleTime: 1000 * 60 * 2, // 2 minutos
     refetchOnWindowFocus: true,
   });
@@ -43,6 +51,35 @@ export const useAppointmentAvailability = (options: UseAppointmentAvailabilityOp
       return slot?.available ?? false;
     },
     [availabilityQuery.data?.slots]
+  );
+
+  const canFitDuration = useCallback(
+    (startTime: string, durationMinutes: number): boolean => {
+      const slots = availabilityQuery.data?.slots || [];
+      if (!startTime || durationMinutes <= 0 || durationMinutes % 15 !== 0) {
+        return false;
+      }
+
+      const startMinutes = toMinutes(startTime);
+      const requiredSlots = durationMinutes / 15;
+
+      for (let i = 0; i < requiredSlots; i++) {
+        const currentMinutes = startMinutes + i * 15;
+        const hh = Math.floor(currentMinutes / 60)
+          .toString()
+          .padStart(2, "0");
+        const mm = (currentMinutes % 60).toString().padStart(2, "0");
+        const time = `${hh}:${mm}`;
+        const slot = slots.find((s) => s.time === time);
+
+        if (!slot || !slot.available) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    [availabilityQuery.data?.slots, toMinutes]
   );
 
   // Handler para mudança de data
@@ -78,6 +115,13 @@ export const useAppointmentAvailability = (options: UseAppointmentAvailabilityOp
     return !!selectedDate && !!selectedTime && !!professionalId && isTimeAvailable(selectedTime);
   }, [selectedDate, selectedTime, professionalId, isTimeAvailable]);
 
+  const isSelectionValidForDuration = useCallback(
+    (durationMinutes: number): boolean => {
+      return !!selectedDate && !!selectedTime && !!professionalId && canFitDuration(selectedTime, durationMinutes);
+    },
+    [selectedDate, selectedTime, professionalId, canFitDuration]
+  );
+
   return {
     // State
     selectedDate,
@@ -100,5 +144,7 @@ export const useAppointmentAvailability = (options: UseAppointmentAvailabilityOp
     // Validation
     isTimeAvailable,
     isSelectionValid,
+    canFitDuration,
+    isSelectionValidForDuration,
   };
 };

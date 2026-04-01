@@ -1,5 +1,5 @@
 import { FormEvent } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import AuthLayout from "@/components/layout/AuthLayout";
 import InputField from "@/components/ui/InputField";
 import Button from "@/components/ui/Button";
@@ -9,6 +9,9 @@ import { useAuth } from "@/context/AuthContext";
 const Login = () => {
   const { login, isLoading, error } = useLogin();
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const sessionExpired =
+    new URLSearchParams(location.search).get("reason") === "session-expired";
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
@@ -32,6 +35,13 @@ const Login = () => {
 
       <div className="bg-white dark:bg-slate-800/50 p-8 rounded-xl shadow-xl shadow-primary/5 border border-slate-200 dark:border-slate-700">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {sessionExpired && (
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">schedule</span>
+              Sua sessão expirou. Faça login novamente.
+            </div>
+          )}
+
           {error && (
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium flex items-center gap-2">
               <span className="material-symbols-outlined text-lg">error</span>

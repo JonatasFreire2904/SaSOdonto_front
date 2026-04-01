@@ -21,8 +21,8 @@ export interface Patient {
 }
 
 export interface CreatePatientRequest {
-  name: string;         // Alinhado com novo backend (era fullName)
-  fullName?: string;    // Mantido para compatibilidade durante transição
+  fullName: string;
+  name?: string;        // Mantido para compatibilidade durante transição
   cpf?: string;
   birthDate: string;
   gender: string;
@@ -33,8 +33,8 @@ export interface CreatePatientRequest {
 }
 
 export interface UpdatePatientRequest {
-  name?: string;        // Alinhado com novo backend (era fullName)
-  fullName?: string;    // Mantido para compatibilidade durante transição
+  fullName?: string;
+  name?: string;        // Mantido para compatibilidade durante transição
   cpf?: string;
   birthDate?: string;
   gender?: string;
@@ -122,20 +122,20 @@ export const patientService = {
   },
 
   async create(clinicId: string, data: CreatePatientRequest): Promise<Patient> {
-    // Envia 'name' para novo backend (converte de fullName se necessário)
+    // Backend espera 'fullName'; aceita 'name' apenas para compatibilidade local.
     const payload = {
       ...data,
-      name: data.name ?? data.fullName,
+      fullName: data.fullName ?? data.name,
     };
     const response = await api.post(`/clinicas/${clinicId}/pacientes`, payload);
     return normalizePatient(response.data);
   },
 
   async update(clinicId: string, patientId: string, data: UpdatePatientRequest): Promise<Patient> {
-    // Envia 'name' para novo backend (converte de fullName se necessário)
+    // Backend espera 'fullName'; aceita 'name' apenas para compatibilidade local.
     const payload = {
       ...data,
-      name: data.name ?? data.fullName,
+      fullName: data.fullName ?? data.name,
     };
     const response = await api.put(`/clinicas/${clinicId}/pacientes/${patientId}`, payload);
     return normalizePatient(response.data);
