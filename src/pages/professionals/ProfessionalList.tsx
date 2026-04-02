@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useProfessionals } from "@/hooks/queries/useProfessionals";
+import { clinicStorage } from "@/infrastructure/storage/clinicStorage";
 import { useDeleteProfessional } from "@/hooks/mutations/useDeleteProfessional";
 import { useUpdateProfessionalRole } from "@/hooks/mutations/useUpdateProfessionalRole";
 import CreateProfessionalModal from "./components/CreateProfessionalModal";
@@ -8,7 +9,7 @@ import { formatRole, ROLE_OPTIONS } from "./utils";
 import type { Professional, ProfessionalRole } from "@/api/professionalService";
 
 const ProfessionalList = () => {
-  const clinicId = localStorage.getItem("selectedClinicId") ?? "";
+  const clinicId = clinicStorage.getClinicId();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
   const [roleEditingId, setRoleEditingId] = useState<string | null>(null);

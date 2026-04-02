@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { clinicStorage } from "@/infrastructure/storage/clinicStorage";
 import api from "@/api/axiosConfig";
 import PatientHeader from "./components/PatientHeader";
 import Odontogram from "./components/Odontogram";
@@ -58,7 +59,7 @@ const PatientRecord = () => {
   const [showToothModal, setShowToothModal] = useState(false);
   const [selectedTooth, setSelectedTooth] = useState<ToothData | null>(null);
 
-  const clinicId = localStorage.getItem("selectedClinicId");
+  const clinicId = clinicStorage.getClinicId();
 
   useEffect(() => {
     const fetchPatientData = async () => {

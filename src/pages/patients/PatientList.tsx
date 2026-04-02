@@ -4,6 +4,7 @@ import { usePatients, useDebounce } from "@/hooks/queries/usePatients";
 import CreatePatientModal from "./components/CreatePatientModal";
 import Pagination from "@/components/ui/Pagination";
 import type { PatientStatus, Patient } from "@/api/patientService";
+import { clinicStorage } from "@/infrastructure/storage/clinicStorage";
 
 const PAGE_SIZE = 10;
 
@@ -19,7 +20,7 @@ const PatientList = () => {
   const [status, setStatus] = useState<PatientStatus>("Active");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const navigate = useNavigate();
-  const clinicId = localStorage.getItem("selectedClinicId") || "";
+  const clinicId = clinicStorage.getClinicId();
 
   const debouncedSearch = useDebounce(search, 500);
 
